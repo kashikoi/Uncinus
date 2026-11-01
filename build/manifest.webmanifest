@@ -1,0 +1,16 @@
+{
+  "name": "Uncinus",
+  "short_name": "Uncinus",
+  "description": "Party soccer in the clouds: the Mac is the pitch, every phone is a blocky player.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

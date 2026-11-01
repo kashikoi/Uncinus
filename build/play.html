@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en" class="day">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>Uncinus — join the match</title>
+  <meta name="theme-color" content="#0f172a" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.10.31.1" />
+  <link rel="apple-touch-icon" href="icon.svg?v=2026.10.31.1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" />
+  <link rel="stylesheet" href="styles.css?v=2026.10.31.1" />
+  <script>
+    (function () {
+      try {
+        var themes = ["day", "twilight", "night"];
+        var pref = localStorage.getItem("uncinus_theme") || "day";
+        var mode = themes.indexOf(pref) >= 0 ? pref : (sessionStorage.getItem("uncinus_active_theme") || "day");
+        document.documentElement.className = themes.indexOf(mode) >= 0 ? mode : "day";
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body class="pad">
+  <div class="pad-sky" aria-hidden="true"></div>
+
+  <main class="screen" id="joinScreen">
+    <div class="brand brand--center">
+      <svg class="brand__emblem" viewBox="0 0 64 40" aria-hidden="true">
+        <path d="M4 30C18 30 30 26 40 12c3-4 9-6 12-2" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+        <path d="M10 22c8 0 14-3 19-9" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".6"/>
+        <circle cx="52" cy="28" r="8" fill="#fff" stroke="var(--accent)" stroke-width="2.5"/>
+      </svg>
+      <div>
+        <div class="brand__name">Uncinus</div>
+        <div class="brand__tag">sky soccer</div>
+      </div>
+    </div>
+    <form class="join-form glass" id="joinForm" autocomplete="off">
+      <label class="field">
+        <span>Room code</span>
+        <input id="roomInput" class="room-input" maxlength="4" inputmode="text" autocapitalize="characters" autocorrect="off" spellcheck="false" placeholder="ABCD" required />
+      </label>
+      <label class="field">
+        <span>Your name</span>
+        <input id="nameInput" maxlength="16" autocorrect="off" spellcheck="false" placeholder="Pelé" required />
+      </label>
+      <p class="error" id="joinError" hidden></p>
+      <button type="submit" class="btn btn--primary btn--big" id="joinBtn">Take the field</button>
+    </form>
+    <p class="muted center">The room code is on the big screen.</p>
+  </main>
+
+  <main class="screen screen--play" id="playScreen" hidden>
+    <header class="pad-top">
+      <div class="me">
+        <span class="me__swatch me__swatch--block" id="meSwatch"><span id="meNumber"></span></span>
+        <div>
+          <div class="me__name" id="meName">Player</div>
+          <div class="me__sub"><span id="meColor">Joining</span> · room <span class="mono" id="meRoom"></span></div>
+          <div class="mini-score" id="miniScore"><span class="mini-score__sky">Sky</span> <b id="scoreLeft">0</b> – <b id="scoreRight">0</b> <span class="mini-score__ember">Ember</span></div>
+        </div>
+      </div>
+      <div class="status status--compact" id="status" data-state="connecting"><span class="status__dot"></span></div>
+      <button type="button" class="icon-btn" id="leaveBtn" title="Leave">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3M10 16l-4-4 4-4M6 12h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </header>
+
+    <section class="stick-area" id="stickArea" aria-label="Drag to run">
+      <div class="stick-base" id="stickBase"><div class="stick-knob" id="stickKnob"></div></div>
+      <p class="stick-hint" id="stickHint">Drag anywhere to run</p>
+    </section>
+
+    <footer class="pad-bottom">
+      <button type="button" class="btn tilt-btn" id="tiltBtn" aria-pressed="false">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="3" width="10" height="18" rx="2.5" transform="rotate(-14 12 12)" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+        <span id="tiltLabel">Tilt</span>
+      </button>
+      <button type="button" class="kick-btn" id="kickBtn">
+        <svg viewBox="0 0 48 48" aria-hidden="true"><circle cx="30" cy="24" r="11" fill="currentColor"/><path d="M4 18h12M2 26h14M6 34h10" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>
+        <span>Kick</span>
+        <span class="kick-btn__charge" id="kickCharge"></span>
+      </button>
+    </footer>
+
+    <div class="goal-flash" id="goalFlash" hidden><span id="goalFlashText">GOAL!</span><small id="goalFlashWho"></small></div>
+
+    <div class="overlay" id="overlay" hidden>
+      <div class="overlay__card glass">
+        <p id="overlayText"></p>
+        <button type="button" class="btn" id="overlayBtn" hidden></button>
+      </div>
+    </div>
+  </main>
+
+  <script src="js/util.js?v=2026.10.31.1"></script>
+  <script src="js/net.js?v=2026.10.31.1"></script>
+  <script src="js/controller.js?v=2026.10.31.1"></script>
+</body>
+</html>

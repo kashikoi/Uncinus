@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en" class="day">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Uncinus — sky soccer, every phone is a player</title>
+  <meta name="description" content="Party soccer in the clouds: the Mac is the pitch, every phone is a blocky player." />
+  <meta name="theme-color" content="#0f172a" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.10.31.1" />
+  <link rel="apple-touch-icon" href="icon.svg?v=2026.10.31.1" />
+  <link rel="manifest" href="manifest.webmanifest?v=2026.10.31.1" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" />
+  <link rel="stylesheet" href="styles.css?v=2026.10.31.1" />
+  <script>
+    // Resolve atmosphere before first paint to prevent a flash of the wrong theme.
+    (function () {
+      try {
+        var themes = ["day", "twilight", "night"];
+        var pref = localStorage.getItem("uncinus_theme") || "day";
+        var mode = pref;
+        if (pref === "random") {
+          mode = sessionStorage.getItem("uncinus_active_theme");
+          if (themes.indexOf(mode) < 0) {
+            mode = themes[Math.floor(Math.random() * themes.length)];
+            sessionStorage.setItem("uncinus_active_theme", mode);
+          }
+        }
+        if (themes.indexOf(mode) < 0) mode = "day";
+        document.documentElement.className = mode;
+      } catch (e) {}
+    })();
+  </script>
+</head>
+<body class="host">
+  <canvas id="pitch" class="sky-canvas" aria-label="The pitch"></canvas>
+
+  <header class="topbar">
+    <div class="brand">
+      <svg class="brand__emblem" viewBox="0 0 64 40" aria-hidden="true">
+        <path d="M4 30C18 30 30 26 40 12c3-4 9-6 12-2" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+        <path d="M10 22c8 0 14-3 19-9" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".6"/>
+        <circle cx="52" cy="28" r="8" fill="#fff" stroke="var(--accent)" stroke-width="2.5"/>
+      </svg>
+      <div>
+        <div class="brand__name">Uncinus</div>
+        <div class="brand__tag">sky soccer · every phone is a player</div>
+      </div>
+    </div>
+    <div class="topbar__actions">
+      <div class="status" id="status" data-state="connecting" role="status" aria-live="polite">
+        <span class="status__dot"></span><span id="statusText">Connecting…</span>
+      </div>
+      <button type="button" class="icon-btn" id="kbBtn" aria-pressed="false" title="Play with the keyboard (K)">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 10h1M9.5 10h1M13 10h1M16.5 10h1M8 14h8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+      <button type="button" class="icon-btn" id="fsBtn" title="Full screen">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <button type="button" class="icon-btn" id="settingsBtn" title="Settings">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div class="scoreboard" aria-live="polite">
+    <span class="scoreboard__team scoreboard__team--left">Sky</span>
+    <span class="scoreboard__num" id="scoreLeft">0</span>
+    <span class="scoreboard__dash">–</span>
+    <span class="scoreboard__num" id="scoreRight">0</span>
+    <span class="scoreboard__team scoreboard__team--right">Ember</span>
+  </div>
+
+  <div class="goal-banner" id="goalBanner" hidden>
+    <div class="goal-banner__word">GOAL!</div>
+    <div class="goal-banner__who" id="goalWho"></div>
+  </div>
+
+  <div class="banner" id="banner" hidden>
+    <span id="bannerText"></span>
+    <button type="button" class="btn btn--small" id="bannerBtn"></button>
+  </div>
+
+  <aside class="join-card glass" id="joinCard" aria-labelledby="joinTitle">
+    <button type="button" class="join-card__close icon-btn" id="joinClose" title="Tuck away">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+    <h1 class="join-card__title" id="joinTitle">Scan to join the match</h1>
+    <a class="join-card__qr" id="joinLink" target="_blank" rel="noopener"><span id="qr"></span></a>
+    <div class="join-card__code">
+      <span class="join-card__label">Room</span>
+      <span class="room-code" id="roomCode">····</span>
+    </div>
+    <p class="join-card__hint">No camera? Open <span class="mono" id="joinUrl"></span> and type the code.</p>
+    <p class="join-card__hint join-card__hint--soft" id="emptyHint">Teams fill up automatically. Drag or tilt to run, tap Kick to dash into the ball. Press <kbd>K</kbd> to play with the keyboard.</p>
+  </aside>
+
+  <button type="button" class="join-mini glass" id="joinMini" hidden title="Show the join code">
+    <span class="join-mini__qr" id="miniQr"></span>
+    <span><span class="join-card__label">Join</span><span class="room-code room-code--small" id="miniRoom">····</span></span>
+  </button>
+
+  <ul class="roster roster--left" id="rosterLeft" hidden aria-label="Team Sky"></ul>
+  <ul class="roster roster--right" id="rosterRight" hidden aria-label="Team Ember"></ul>
+
+  <dialog class="modal glass" id="settings" aria-labelledby="settingsTitle">
+    <div class="modal__head">
+      <h2 id="settingsTitle">Settings</h2>
+      <button type="button" class="icon-btn" id="settingsClose" title="Close">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <section class="modal__section">
+      <h3>Atmosphere</h3>
+      <div class="theme-picker" id="themePicker" role="radiogroup" aria-label="Atmosphere">
+        <button type="button" class="theme-chip" data-theme-val="day">&#9728;&#65039; Day</button>
+        <button type="button" class="theme-chip" data-theme-val="twilight">&#127750; Twilight</button>
+        <button type="button" class="theme-chip" data-theme-val="night">&#127769; Night</button>
+        <button type="button" class="theme-chip" data-theme-val="random">&#127922; Random</button>
+      </div>
+    </section>
+    <section class="modal__section">
+      <h3>Match</h3>
+      <p class="muted">Reset the score and kick off again, or start a fresh room with a new code (everyone scans again).</p>
+      <div class="field-row">
+        <button type="button" class="btn" id="resetBtn">Reset score</button>
+        <button type="button" class="btn btn--ghost" id="newRoomBtn">New room</button>
+      </div>
+    </section>
+    <section class="modal__section">
+      <h3>Relay</h3>
+      <p class="muted">The tiny Cloudflare Worker that passes phone input to this screen. Change it only for local testing.</p>
+      <div class="field-row">
+        <input type="url" id="relayInput" spellcheck="false" autocomplete="off" />
+        <button type="button" class="btn" id="relaySave">Save</button>
+        <button type="button" class="btn btn--ghost" id="relayReset">Default</button>
+      </div>
+      <p class="error" id="relayError" hidden></p>
+    </section>
+    <p class="modal__foot muted">Uncinus <span id="version"></span> · part of the kashikoi cloud suite</p>
+  </dialog>
+
+  <script src="js/util.js?v=2026.10.31.1"></script>
+  <script src="js/qr.js?v=2026.10.31.1"></script>
+  <script src="js/net.js?v=2026.10.31.1"></script>
+  <script src="js/match.js?v=2026.10.31.1"></script>
+  <script src="js/render.js?v=2026.10.31.1"></script>
+  <script src="js/host.js?v=2026.10.31.1"></script>
+</body>
+</html>
