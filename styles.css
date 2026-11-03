@@ -236,6 +236,11 @@ kbd {
   color: var(--ink-soft);
 }
 
+.brand__version {
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-weight: 700;
+}
+
 .brand--center {
   justify-content: center;
 }

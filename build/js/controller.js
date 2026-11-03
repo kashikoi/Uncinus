@@ -310,7 +310,9 @@
       "joinScreen", "playScreen", "joinForm", "roomInput", "nameInput", "joinError", "meSwatch", "meName", "meColor", "meRoom",
       "status", "leaveBtn", "stickArea", "stickBase", "stickKnob", "stickHint", "tiltBtn", "tiltLabel", "overlay",
       "overlayText", "overlayBtn", "meNumber", "scoreLeft", "scoreRight", "kickBtn", "goalFlash", "goalFlashText", "goalFlashWho",
+      "appVersion",
     ].forEach((id) => (el[id] = $(id)));
+    el.appVersion.textContent = `v${util.APP_VERSION}`;
 
     el.roomInput.addEventListener("input", () => {
       el.roomInput.value = el.roomInput.value.toUpperCase().replace(/[^A-Z]/g, "").replace(/[IO]/g, "");

@@ -284,13 +284,14 @@
     [
       "pitch", "status", "statusText", "kbBtn", "fsBtn", "settingsBtn", "joinCard", "joinMini", "joinClose", "qr", "miniQr",
       "roomCode", "miniRoom", "joinUrl", "joinLink", "emptyHint", "banner", "bannerText", "bannerBtn", "settings",
-      "themePicker", "relayInput", "relaySave", "relayReset", "relayError", "newRoomBtn", "resetBtn", "version", "settingsClose",
+      "themePicker", "relayInput", "relaySave", "relayReset", "relayError", "newRoomBtn", "resetBtn", "version", "appVersion", "settingsClose",
       "scoreLeft", "scoreRight", "goalBanner", "goalWho",
     ].forEach((id) => (el[id] = $(id)));
     el.roster_left = $("rosterLeft");
     el.roster_right = $("rosterRight");
 
     el.version.textContent = util.APP_VERSION;
+    el.appVersion.textContent = `v${util.APP_VERSION}`;
     el.kbBtn.addEventListener("click", toggleKeyboard);
     el.fsBtn.addEventListener("click", () => {
       if (document.fullscreenElement) document.exitFullscreen();
