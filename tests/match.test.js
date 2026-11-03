@@ -358,3 +358,52 @@ test("a big player stays inside the pitch", () => {
   const h = M.HALF * big.scale;
   assert.ok(big.x >= M.PITCH.L + h - 0.01 && big.y >= M.PITCH.T + h - 0.01);
 });
+
+function flowerMatch() {
+  const m = M.createMatch();
+  m.rand = seeded(11);
+  const ann = M.addPlayer(m, "aaaaaa", "Ann"); // left, attacks the right goal
+  M.setMayhem(m, true);
+  m.flower = { x: ann.x, y: ann.y, age: 0 };
+  M.step(m, 1 / 120);
+  return { m, ann };
+}
+
+const shootRight = (m, id) => Object.assign(m.ball, { x: M.PITCH.R - 60, y: M.CY, vx: 700, vy: 0, lastTouch: id });
+
+test("mayhem blooms a power flower on its own schedule", () => {
+  const m = M.createMatch();
+  m.rand = seeded(6);
+  M.setMayhem(m, true);
+  const wait = m.flowerIn;
+  assert.ok(wait >= M.FLOWER_GAP_MIN && wait <= M.FLOWER_GAP_MAX);
+  let t = 0;
+  for (; !m.flower && t < M.FLOWER_GAP_MAX + 1; t += 1 / 60) M.step(m, 1 / 60);
+  assert.ok(m.flower && Math.abs(t - wait) < 0.1);
+  run(m, M.FLOWER_LIFE + 0.1);
+  assert.equal(m.flower, null);
+  assert.ok(M.drainEvents(m).some((e) => e.type === "flower-gone"));
+});
+
+test("with flower power, your goals count FLOWER_POINTS", () => {
+  const { m, ann } = flowerMatch();
+  assert.equal(m.flower, null);
+  assert.ok(ann.flower > M.FLOWER_POWER - 0.1);
+  assert.equal(M.drainEvents(m).find((e) => e.type === "flower-get").id, "aaaaaa");
+  shootRight(m, "aaaaaa");
+  run(m, 0.3);
+  assert.deepEqual(m.score, { left: M.FLOWER_POINTS, right: 0 });
+  assert.equal(M.drainEvents(m).find((e) => e.type === "goal").points, M.FLOWER_POINTS);
+});
+
+test("flower power doesn't multiply own goals, and wears off", () => {
+  const { m } = flowerMatch();
+  Object.assign(m.ball, { x: M.PITCH.L + 60, y: M.CY, vx: -700, vy: 0, lastTouch: "aaaaaa" });
+  run(m, 0.3);
+  assert.deepEqual(m.score, { left: 0, right: 1 });
+  run(m, M.FLOWER_POWER);
+  assert.ok(M.drainEvents(m).some((e) => e.type === "flower-end"));
+  shootRight(m, "aaaaaa");
+  run(m, 0.3);
+  assert.deepEqual(m.score, { left: 1, right: 1 }, "back to a normal goal");
+});

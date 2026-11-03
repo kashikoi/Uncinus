@@ -6,13 +6,13 @@
   <title>Uncinus — sky soccer, every phone is a player</title>
   <meta name="description" content="Party soccer in the clouds: the Mac is the pitch, every phone is a blocky player." />
   <meta name="theme-color" content="#0f172a" />
-  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.11.03.7" />
-  <link rel="apple-touch-icon" href="icon.svg?v=2026.11.03.7" />
-  <link rel="manifest" href="manifest.webmanifest?v=2026.11.03.7" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.11.03.8" />
+  <link rel="apple-touch-icon" href="icon.svg?v=2026.11.03.8" />
+  <link rel="manifest" href="manifest.webmanifest?v=2026.11.03.8" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=2026.11.03.7" />
+  <link rel="stylesheet" href="styles.css?v=2026.11.03.8" />
   <script>
     // Resolve atmosphere before first paint to prevent a flash of the wrong theme.
     (function () {
@@ -75,7 +75,7 @@
   <div class="star-toast" id="starToast" hidden></div>
 
   <div class="goal-banner" id="goalBanner" hidden>
-    <div class="goal-banner__word">GOAL!</div>
+    <div class="goal-banner__word" id="goalWord">GOAL!</div>
     <div class="goal-banner__who" id="goalWho"></div>
   </div>
 
@@ -130,7 +130,7 @@
       </label>
       <label class="toggle">
         <input type="checkbox" id="mayhemToggle" />
-        <span class="toggle__text"><b>&#11088; Mayhem mode</b><small>About once a minute a star drifts onto the pitch: grab it for 10 seconds as a ghost who runs through everyone, and only you can touch the ball. A mushroom sprouts now and then too: eat it to grow 2.5&times; bigger for 12 seconds and shove everyone around.</small></span>
+        <span class="toggle__text"><b>&#11088; Mayhem mode</b><small>About once a minute a star drifts onto the pitch: grab it for 10 seconds as a ghost who runs through everyone, and only you can touch the ball. A mushroom sprouts now and then too: eat it to grow 2.5&times; bigger for 12 seconds and shove everyone around. And grab a power flower to make your goals count 5&times; for 20 seconds.</small></span>
       </label>
     </section>
     <section class="modal__section">
@@ -154,12 +154,12 @@
     <p class="modal__foot muted">Uncinus <span id="version"></span> · part of the kashikoi cloud suite</p>
   </dialog>
 
-  <script src="js/util.js?v=2026.11.03.7"></script>
-  <script src="js/qr.js?v=2026.11.03.7"></script>
-  <script src="js/net.js?v=2026.11.03.7"></script>
-  <script src="js/face.js?v=2026.11.03.7"></script>
-  <script src="js/match.js?v=2026.11.03.7"></script>
-  <script src="js/render.js?v=2026.11.03.7"></script>
-  <script src="js/host.js?v=2026.11.03.7"></script>
+  <script src="js/util.js?v=2026.11.03.8"></script>
+  <script src="js/qr.js?v=2026.11.03.8"></script>
+  <script src="js/net.js?v=2026.11.03.8"></script>
+  <script src="js/face.js?v=2026.11.03.8"></script>
+  <script src="js/match.js?v=2026.11.03.8"></script>
+  <script src="js/render.js?v=2026.11.03.8"></script>
+  <script src="js/host.js?v=2026.11.03.8"></script>
 </body>
 </html>

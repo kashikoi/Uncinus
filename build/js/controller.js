@@ -49,7 +49,8 @@
   function showJoin(error) {
     stopLink();
     el.teamPick.hidden = true;
-    document.body.classList.remove("is-star", "is-big");
+    el.attackBar.hidden = true;
+    document.body.classList.remove("is-star", "is-big", "is-flower");
     el.playScreen.hidden = true;
     el.joinScreen.hidden = false;
     el.joinError.hidden = !error;
@@ -101,6 +102,7 @@
         el.meNumber.textContent = msg.number;
         el.meColor.textContent = `Team ${msg.teamName} · #${msg.number}`;
         state.attack = msg.team === "left" ? "you attack →" : "← you attack";
+        renderAttack(msg.team);
         renderTilt();
         document.documentElement.style.setProperty("--me", msg.color);
         break;
@@ -116,6 +118,9 @@
       case "big":
         setBig(Boolean(msg.on));
         break;
+      case "flower":
+        setFlower(Boolean(msg.on), msg.points);
+        break;
       case "goal":
         renderScore(msg.score || {});
         flashGoal(msg);
@@ -130,6 +135,16 @@
         showJoin("That match is full — 12 players max.");
         break;
     }
+  }
+
+  // Mini pitch: the goal you defend is your colour; the other one is where you score.
+  function renderAttack(team) {
+    const left = team === "left";
+    el.attackBar.hidden = false;
+    el.attackBar.dataset.team = team;
+    el.goalLeftLabel.textContent = left ? "🛡 Defend" : "⚽ Score";
+    el.goalRightLabel.textContent = left ? "⚽ Score" : "🛡 Defend";
+    el.attackArrow.textContent = left ? "Attack →→→" : "←←← Attack";
   }
 
   // Counts include this player on the team they were dealt onto, so leave them out of it.
@@ -151,9 +166,15 @@
     if (on) powerFlash("is-big", "🍄 HUGE!", "You're giant — shove everyone out of the way", [200, 60, 300]);
   }
 
+  function setFlower(on, points) {
+    document.body.classList.toggle("is-flower", on);
+    const n = Number.isInteger(points) ? points : 5;
+    if (on) powerFlash("is-flower", "🌸 FLOWER POWER!", `Your goals count ${n}× — go score!`, [60, 30, 60, 30, 60, 30, 200]);
+  }
+
   function powerFlash(kind, text, sub, buzz) {
     if (navigator.vibrate) navigator.vibrate(buzz);
-    el.goalFlash.classList.remove("is-ours", "is-star", "is-big");
+    el.goalFlash.classList.remove("is-ours", "is-star", "is-big", "is-flower");
     el.goalFlash.classList.add(kind);
     el.goalFlashText.textContent = text;
     el.goalFlashWho.textContent = sub;
@@ -168,11 +189,12 @@
   }
 
   function flashGoal(msg) {
-    el.goalFlash.classList.remove("is-star", "is-big");
+    el.goalFlash.classList.remove("is-star", "is-big", "is-flower");
     const ours = msg.team === state.team;
     const mine = msg.scorerId === state.id;
     el.goalFlash.classList.toggle("is-ours", ours);
-    el.goalFlashText.textContent = ours ? (mine && !msg.ownGoal ? "YOU SCORED!" : "GOAL!") : "Conceded";
+    const bonus = msg.points > 1 ? `${msg.points}× ` : "";
+    el.goalFlashText.textContent = ours ? (mine && !msg.ownGoal ? `YOU SCORED${bonus ? ` ${msg.points}` : ""}!` : `${bonus}GOAL!`) : `Conceded${bonus ? ` ${msg.points}` : ""}`;
     el.goalFlashWho.textContent = msg.scorerName ? (msg.ownGoal ? `Own goal · ${msg.scorerName}` : msg.scorerName) : "";
     el.goalFlash.hidden = false;
     clearTimeout(state.goalTimer);
@@ -478,7 +500,7 @@
       "status", "leaveBtn", "stickArea", "stickBase", "stickKnob", "stickHint", "tiltBtn", "tiltLabel", "overlay",
       "overlayText", "overlayBtn", "meNumber", "scoreLeft", "scoreRight", "kickBtn", "goalFlash", "goalFlashText", "goalFlashWho",
       "appVersion", "faceThumb", "faceImg", "faceBlank", "faceHint", "faceBtn", "faceClear", "cam", "camVideo", "camShot",
-      "camError", "camCancel", "camSnap", "camRetake", "camUse", "teamPick", "pickLeft", "pickRight",
+      "camError", "camCancel", "camSnap", "camRetake", "camUse", "teamPick", "pickLeft", "pickRight", "attackBar", "goalLeftLabel", "goalRightLabel", "attackArrow",
     ].forEach((id) => (el[id] = $(id)));
     el.appVersion.textContent = `v${util.APP_VERSION}`;
 

@@ -148,10 +148,10 @@
       state.renderer.onEvent(ev, state.match);
       if (ev.type === "goal") {
         renderScore();
-        broadcast({ t: "goal", team: ev.team, scorerId: ev.scorerId, scorerName: ev.scorerName, ownGoal: ev.ownGoal, score: ev.score });
+        broadcast({ t: "goal", team: ev.team, scorerId: ev.scorerId, scorerName: ev.scorerName, ownGoal: ev.ownGoal, points: ev.points, score: ev.score });
         const team = M.TEAMS[ev.team];
         const who = ev.scorerName ? (ev.ownGoal ? `Own goal by ${ev.scorerName}` : `${ev.scorerName} scores for ${team.name}`) : `${team.name} scores`;
-        showGoalBanner(team, who);
+        showGoalBanner(team, ev.points > 1 ? `🌸 ${who} — worth ${ev.points}!` : who, ev.points > 1 ? `${ev.points}× GOAL!` : "GOAL!");
       } else if (ev.type === "reset") {
         renderScore();
         broadcast({ t: "score", ...state.match.score });
@@ -169,6 +169,13 @@
         sendTo(ev.id, { t: "big", on: true, secs: M.BIG_POWER });
       } else if (ev.type === "shroom-end") {
         sendTo(ev.id, { t: "big", on: false });
+      } else if (ev.type === "flower-spawn") {
+        showStarToast("🌸 A power flower bloomed — grab it!");
+      } else if (ev.type === "flower-get") {
+        showStarToast(`🌸 ${ev.name} has flower power — goals count ${M.FLOWER_POINTS}×!`);
+        sendTo(ev.id, { t: "flower", on: true, secs: M.FLOWER_POWER, points: M.FLOWER_POINTS });
+      } else if (ev.type === "flower-end") {
+        sendTo(ev.id, { t: "flower", on: false });
       }
     }
   }
@@ -208,8 +215,9 @@
     M.setMayhem(state.match, get(MAYHEM_KEY));
   }
 
-  function showGoalBanner(team, who) {
+  function showGoalBanner(team, who, word) {
     el.goalBanner.style.setProperty("--team", team.color);
+    el.goalWord.textContent = word;
     el.goalWho.textContent = who;
     el.goalBanner.hidden = false;
     el.goalBanner.classList.remove("is-in");
@@ -388,7 +396,7 @@
       "pitch", "status", "statusText", "kbBtn", "fsBtn", "settingsBtn", "joinCard", "joinMini", "joinClose", "qr", "miniQr",
       "roomCode", "miniRoom", "joinUrl", "joinLink", "emptyHint", "banner", "bannerText", "bannerBtn", "settings",
       "themePicker", "relayInput", "relaySave", "relayReset", "relayError", "newRoomBtn", "resetBtn", "version", "appVersion", "settingsClose",
-      "scoreLeft", "scoreRight", "goalBanner", "goalWho", "teamPickToggle", "mayhemToggle", "starToast",
+      "scoreLeft", "scoreRight", "goalBanner", "goalWho", "teamPickToggle", "mayhemToggle", "starToast", "goalWord",
     ].forEach((id) => (el[id] = $(id)));
     el.roster_left = $("rosterLeft");
     el.roster_right = $("rosterRight");

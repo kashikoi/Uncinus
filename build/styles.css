@@ -1049,7 +1049,9 @@ body.pad {
 
 .goal-flash span {
   font-weight: 900;
-  font-size: 3.2rem;
+  font-size: clamp(2rem, 11vw, 3.2rem);
+  padding: 0 16px;
+  text-align: center;
   letter-spacing: -0.02em;
 }
 
@@ -1441,4 +1443,79 @@ body.is-star .kick-btn {
 
 .team-opt:active {
   transform: scale(0.96);
+}
+
+/* ---------- Flower power ---------- */
+.goal-flash.is-flower {
+  background: radial-gradient(circle at 50% 40%, #fde047 0 18%, #f97316 45%, #dc2626 100%);
+  color: #fff;
+  padding: 0 24px;
+  text-align: center;
+  text-shadow: 0 2px 8px rgba(127, 29, 29, 0.5);
+}
+
+.goal-flash.is-flower span {
+  font-size: clamp(2rem, 11vw, 3.4rem);
+}
+
+body.is-flower .me {
+  border-color: #f97316;
+  box-shadow: 0 0 0 3px #f97316, 0 0 24px #dc2626;
+}
+
+/* ---------- Which way to attack ---------- */
+.attack-bar {
+  display: flex;
+  align-items: stretch;
+  height: 46px;
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  font-weight: 800;
+  font-size: 0.85rem;
+}
+
+.attack-bar__goal {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30%;
+  color: #fff;
+}
+
+/* Each goal wears the colour of the team that defends it, like on the big screen. */
+.attack-bar__goal--left {
+  background: var(--sky-team);
+}
+
+.attack-bar__goal--right {
+  background: var(--ember-team);
+}
+
+.attack-bar[data-team="left"] .attack-bar__goal--left,
+.attack-bar[data-team="right"] .attack-bar__goal--right {
+  opacity: 0.55;
+  font-weight: 700;
+}
+
+.attack-bar[data-team="left"] .attack-bar__goal--right,
+.attack-bar[data-team="right"] .attack-bar__goal--left {
+  font-size: 1rem;
+  box-shadow: inset 0 0 0 3px #fff;
+  animation: score-pulse 1.4s ease-in-out infinite;
+}
+
+.attack-bar__arrow {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  color: var(--me, var(--ink));
+  letter-spacing: 0.04em;
+}
+
+@keyframes score-pulse {
+  50% {
+    filter: brightness(1.2);
+  }
 }

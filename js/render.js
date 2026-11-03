@@ -4,7 +4,7 @@
 
   const U = root.Uncinus;
   const M = U.match;
-  const { W, H, PITCH, CX, CY, GOAL_HALF, GOAL_DEPTH, POST_R, HALF, BALL_R, TEAMS, STAR_R, STAR_LIFE, SHROOM_R, SHROOM_LIFE } = M;
+  const { W, H, PITCH, CX, CY, GOAL_HALF, GOAL_DEPTH, POST_R, HALF, BALL_R, TEAMS, STAR_R, STAR_LIFE, SHROOM_R, SHROOM_LIFE, FLOWER_R, FLOWER_LIFE } = M;
   const { FACE_OVAL } = U.face;
   // The frame of a face player: the same outline as a block's "Kick ready" ring (block + 9 px lift + 4 px margin).
   const FRAME = { half: HALF + 4, top: HALF + 4, bottom: HALF + 13 };
@@ -104,6 +104,17 @@
         this.fx.push({ kind: "ring", x: ev.x, y: ev.y, age: 0, life: 0.6, color: "#fde047" });
       } else if (ev.type === "shroom-spawn") {
         this.fx.push({ kind: "ring", x: ev.x, y: ev.y, age: 0, life: 0.6, color: "#ef4444" });
+      } else if (ev.type === "flower-spawn") {
+        this.fx.push({ kind: "ring", x: ev.x, y: ev.y, age: 0, life: 0.6, color: "#fb923c" });
+      } else if (ev.type === "flower-get") {
+        for (let i = 0; i < 30; i++) {
+          const a = this.rand() * Math.PI * 2;
+          const sp = 100 + this.rand() * 260;
+          this.fx.push({
+            kind: "confetti", x: ev.x, y: ev.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 150,
+            rot: this.rand() * 6, age: 0, life: 1 + this.rand() * 0.5, color: ["#f97316", "#fde047", "#ef4444"][i % 3], size: 5 + this.rand() * 4,
+          });
+        }
       } else if (ev.type === "shroom-get") {
         for (let i = 0; i < 3; i++) this.fx.push({ kind: "ring", x: ev.x, y: ev.y, age: 0, life: 0.5 + i * 0.25, color: i ? "#ef4444" : "#ffffff" });
       } else if (ev.type === "star-get") {
@@ -175,6 +186,7 @@
         else this.drawShadow(ctx, pal, p.x, p.y + (HALF + 6) * s, HALF * 1.25 * s, 9 * s, p.connected ? 1 : 0.4);
       }
       if (m.shroom) this.drawShroom(ctx, pal, m.shroom);
+      if (m.flower) this.drawFlower(ctx, pal, m.flower);
       this.drawShadow(ctx, pal, m.ball.x + 5, m.ball.y + BALL_R * 0.8, BALL_R * 1.05, 5, 1);
       this.drawTrails(ctx, players);
       for (const p of players) {
@@ -184,8 +196,10 @@
         ctx.translate(p.x, p.y);
         ctx.scale(s, s);
         ctx.translate(-p.x, -p.y);
+        if (p.flower > 0) this.drawFlowerAura(ctx, p);
         this.drawPlayer(ctx, p);
         if (p.star > 0) this.drawStarAura(ctx, p);
+        if (p.flower > 0) this.drawFlowerBadge(ctx, p);
         ctx.restore();
       }
       if (m.star) this.drawStar(ctx, m.star);
@@ -250,6 +264,7 @@
         ctx.fillStyle = i % 2 ? pal.grassA : pal.grassB;
         ctx.fillRect(PITCH.L + i * sw, PITCH.T, sw + 0.5, PITCH.B - PITCH.T);
       }
+      this.drawTeamSides(ctx);
       ctx.strokeStyle = pal.line;
       ctx.lineWidth = 4;
       ctx.strokeRect(PITCH.L, PITCH.T, PITCH.R - PITCH.L, PITCH.B - PITCH.T);
@@ -277,13 +292,54 @@
         ctx.arc(gx - side * 150, CY, 90, side < 0 ? -0.93 : Math.PI - 0.93, side < 0 ? 0.93 : Math.PI + 0.93);
         ctx.stroke();
       }
-      // Team tint on each half, faint, so new players know which way to attack.
+      // Team-colour stripe along each end line (outside the goal mouth): this end belongs to that team.
       for (const team of ["left", "right"]) {
+        const x = team === "left" ? PITCH.L - 11 : PITCH.R + 3;
         ctx.fillStyle = TEAMS[team].color;
-        ctx.globalAlpha = 0.07;
-        ctx.fillRect(team === "left" ? PITCH.L : CX, PITCH.T, CX - PITCH.L, PITCH.B - PITCH.T);
+        ctx.fillRect(x, PITCH.T - 2, 8, CY - GOAL_HALF - PITCH.T - POST_R + 2);
+        ctx.fillRect(x, CY + GOAL_HALF + POST_R, 8, PITCH.B - CY - GOAL_HALF - POST_R + 2);
       }
-      ctx.globalAlpha = 1;
+    }
+
+    // Paint each half so nobody wonders which way to go: a team tint, the team's name in front of the goal it
+    // defends, and big chevrons in its colour pointing at the goal it attacks.
+    drawTeamSides(ctx) {
+      ctx.save();
+      for (const team of ["left", "right"]) {
+        const dir = team === "left" ? 1 : -1;
+        const color = TEAMS[team].color;
+        ctx.fillStyle = color;
+        ctx.globalAlpha = 0.1;
+        ctx.fillRect(team === "left" ? PITCH.L : CX, PITCH.T, CX - PITCH.L, PITCH.B - PITCH.T);
+
+        ctx.globalAlpha = 0.3;
+        ctx.save();
+        ctx.translate(team === "left" ? PITCH.L + 40 : PITCH.R - 40, CY);
+        ctx.rotate(dir * -Math.PI / 2);
+        ctx.font = "900 46px Inter, system-ui, -apple-system, sans-serif";
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(TEAMS[team].name.toUpperCase(), 0, 0);
+        ctx.restore();
+
+        ctx.globalAlpha = 0.22;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 16;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        const x0 = team === "left" ? PITCH.L + 330 : PITCH.R - 330;
+        for (const y of [PITCH.T + 120, PITCH.B - 120]) {
+          for (let i = 0; i < 3; i++) {
+            const x = x0 + dir * i * 70;
+            ctx.beginPath();
+            ctx.moveTo(x - dir * 22, y - 40);
+            ctx.lineTo(x + dir * 22, y);
+            ctx.lineTo(x - dir * 22, y + 40);
+            ctx.stroke();
+          }
+        }
+      }
+      ctx.restore();
     }
 
     drawNets(ctx, pal, layer) {
@@ -292,9 +348,14 @@
         const backX = lineX + side * GOAL_DEPTH;
         const top = CY - GOAL_HALF;
         const bottom = CY + GOAL_HALF;
+        const team = TEAMS[side < 0 ? "left" : "right"];
         if (layer === "back") {
           ctx.fillStyle = pal.netBg;
           ctx.fillRect(Math.min(lineX, backX), top, GOAL_DEPTH, bottom - top);
+          ctx.fillStyle = team.color;
+          ctx.globalAlpha = 0.45;
+          ctx.fillRect(Math.min(lineX, backX), top, GOAL_DEPTH, bottom - top);
+          ctx.globalAlpha = 1;
           ctx.strokeStyle = pal.net;
           ctx.lineWidth = 1.2;
           ctx.beginPath();
@@ -308,8 +369,8 @@
           }
           ctx.stroke();
         } else {
-          ctx.strokeStyle = "#ffffff";
-          ctx.lineWidth = 5;
+          ctx.strokeStyle = team.color;
+          ctx.lineWidth = 6;
           ctx.beginPath();
           ctx.moveTo(lineX, top);
           ctx.lineTo(backX, top);
@@ -507,6 +568,89 @@
         ctx.fill();
       }
       ctx.restore();
+      ctx.restore();
+    }
+
+    // A flower with fiery layered petals and a face on a leafy stem; sways, blinks before it wilts.
+    drawFlower(ctx, pal, f) {
+      const left = FLOWER_LIFE - f.age;
+      if (left < 3 && Math.floor(left * 6) % 2) return;
+      const grow = Math.min(1, f.age / 0.5);
+      const pop = grow < 1 ? grow * (1 + 0.3 * Math.sin(grow * Math.PI)) : 1;
+      const R = FLOWER_R;
+      this.drawShadow(ctx, pal, f.x, f.y + R * 1.1, R * 0.7 * grow, 4 * grow, 0.8);
+      ctx.save();
+      ctx.translate(f.x, f.y + R * 1.1);
+      ctx.scale(pop, pop);
+      ctx.rotate(Math.sin(this.t * 2.5) * 0.08);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#14532d";
+      ctx.fillStyle = "#22c55e";
+      ctx.fillRect(-2, -R * 1.1, 4, R * 1.1);
+      for (const side of [-1, 1]) {
+        ctx.beginPath();
+        ctx.ellipse(side * R * 0.45, -R * 0.3, R * 0.45, R * 0.18, side * -0.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.translate(0, -R * 1.25);
+      ctx.strokeStyle = "#9a3412";
+      for (const [rad, color] of [[R * 0.95, "#ef4444"], [R * 0.72, "#f97316"], [R * 0.5, "#fde047"]]) {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, rad * 1.15, rad * 0.8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.fillStyle = "#fffbeb";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, R * 0.32, R * 0.22, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#111827";
+      for (const ex of [-R * 0.12, R * 0.12]) {
+        ctx.beginPath();
+        ctx.ellipse(ex, 0, 1.6, 3.6, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // Flickering fiery glow behind a player with flower power.
+    drawFlowerAura(ctx, p) {
+      if (p.flower < 2 && Math.floor(p.flower * 8) % 2) return;
+      const cy = p.y + (FRAME.bottom - FRAME.top) / 2;
+      const flicker = 1 + Math.sin(this.t * 13) * 0.06 + Math.sin(this.t * 7.3) * 0.04;
+      const g = ctx.createRadialGradient(p.x, cy, FRAME.half * 0.6, p.x, cy, FRAME.bottom * 1.7 * flicker);
+      g.addColorStop(0, "rgba(253, 186, 116, 0.9)");
+      g.addColorStop(0.5, "rgba(249, 115, 22, 0.45)");
+      g.addColorStop(1, "rgba(239, 68, 68, 0)");
+      ctx.save();
+      ctx.globalAlpha = p.connected ? 1 : 0.4;
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(p.x, cy, FRAME.bottom * 1.7 * flicker, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // "5×" badge on the top-right corner of a player with flower power.
+    drawFlowerBadge(ctx, p) {
+      if (p.flower < 2 && Math.floor(p.flower * 8) % 2) return;
+      const bx = p.x + FRAME.half;
+      const by = p.y - FRAME.top;
+      ctx.save();
+      ctx.fillStyle = "#f97316";
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(bx - 16, by - 10, 32, 20, 10);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "900 13px Inter, system-ui, -apple-system, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${M.FLOWER_POINTS}×`, bx, by + 1);
       ctx.restore();
     }
 

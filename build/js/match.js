@@ -40,6 +40,20 @@
   const BIG_SCALE = 2.5;
   const SHROOM_GAP_MIN = 35;
   const SHROOM_GAP_MAX = 75;
+  // ...and a power flower blooms now and then; while it lasts, goals its holder scores count FLOWER_POINTS.
+  const FLOWER_R = 20;
+  const FLOWER_LIFE = 15;
+  const FLOWER_POWER = 20; // seconds of flower power
+  const FLOWER_POINTS = 5;
+  const FLOWER_GAP_MIN = 45;
+  const FLOWER_GAP_MAX = 90;
+
+  // Stationary pick-ups: where they live on the match, the player field they power up, and their timings.
+  // Only one player at a time holds each kind of power.
+  const ITEMS = {
+    shroom: { field: "big", r: SHROOM_R, life: SHROOM_LIFE, power: BIG_POWER, gapMin: SHROOM_GAP_MIN, gapMax: SHROOM_GAP_MAX },
+    flower: { field: "flower", r: FLOWER_R, life: FLOWER_LIFE, power: FLOWER_POWER, gapMin: FLOWER_GAP_MIN, gapMax: FLOWER_GAP_MAX },
+  };
   const GROW_RATE = 6; // how fast size eases toward its target (1/s)
 
   const GOAL_PAUSE = 2.6;
@@ -77,6 +91,8 @@
       starIn: 0,
       shroom: null,
       shroomIn: 0,
+      flower: null,
+      flowerIn: 0,
       rand: Math.random,
     };
   }
@@ -127,6 +143,7 @@
       kickedBall: false,
       star: 0,
       big: 0,
+      flower: 0,
       scale: 1,
       connected: true,
       goneFor: 0,
@@ -371,14 +388,17 @@
     if (b.x + BALL_R < PITCH.L && b.x - BALL_R >= PITCH.L - GOAL_DEPTH) team = "right";
     else if (b.x - BALL_R > PITCH.R && b.x + BALL_R <= PITCH.R + GOAL_DEPTH) team = "left";
     if (!team) return;
-    m.score[team]++;
     const scorer = b.lastTouch ? m.players.get(b.lastTouch) : null;
+    const ownGoal = Boolean(scorer && scorer.team !== team);
+    const points = scorer && !ownGoal && scorer.flower > 0 ? FLOWER_POINTS : 1;
+    m.score[team] += points;
     m.events.push({
       type: "goal",
       team,
       scorerId: scorer ? scorer.id : null,
       scorerName: scorer ? scorer.name : null,
-      ownGoal: Boolean(scorer && scorer.team !== team),
+      ownGoal,
+      points,
       score: { ...m.score },
     });
     m.phase = "goal";
@@ -386,20 +406,24 @@
   }
 
   const starGap = (m) => STAR_GAP_MIN + m.rand() * (STAR_GAP_MAX - STAR_GAP_MIN);
-  const shroomGap = (m) => SHROOM_GAP_MIN + m.rand() * (SHROOM_GAP_MAX - SHROOM_GAP_MIN);
+  const itemGap = (m, kind) => ITEMS[kind].gapMin + m.rand() * (ITEMS[kind].gapMax - ITEMS[kind].gapMin);
 
   function clearPowerUps(m) {
     m.star = null;
-    m.shroom = null;
     for (const p of m.players.values()) {
       if (p.star > 0) m.events.push({ type: "star-end", id: p.id });
-      if (p.big > 0) m.events.push({ type: "shroom-end", id: p.id });
       p.star = 0;
-      p.big = 0;
     }
     m.powered = false;
     m.starIn = starGap(m);
-    m.shroomIn = shroomGap(m);
+    for (const [kind, item] of Object.entries(ITEMS)) {
+      m[kind] = null;
+      m[`${kind}In`] = itemGap(m, kind);
+      for (const p of m.players.values()) {
+        if (p[item.field] > 0) m.events.push({ type: `${kind}-end`, id: p.id });
+        p[item.field] = 0;
+      }
+    }
   }
 
   function setMayhem(m, on) {
@@ -458,33 +482,34 @@
     }
   }
 
-  // The mushroom sprouts in place and waits; only one player can be huge at a time.
-  function stepShroom(m, dt, list) {
+  // Mushrooms and flowers sprout in place and wait to be picked up.
+  function stepItem(m, dt, list, kind) {
     if (!m.mayhem || m.phase !== "play") return;
-    const s = m.shroom;
-    if (!s) {
-      if (list.some((p) => p.big > 0)) return;
-      m.shroomIn -= dt;
-      if (m.shroomIn <= 0) {
-        m.shroom = { ...randomSpot(m, 70), age: 0 };
-        m.events.push({ type: "shroom-spawn", x: m.shroom.x, y: m.shroom.y });
+    const item = ITEMS[kind];
+    const it = m[kind];
+    if (!it) {
+      if (list.some((p) => p[item.field] > 0)) return;
+      m[`${kind}In`] -= dt;
+      if (m[`${kind}In`] <= 0) {
+        m[kind] = { ...randomSpot(m, 70), age: 0 };
+        m.events.push({ type: `${kind}-spawn`, x: m[kind].x, y: m[kind].y });
       }
       return;
     }
-    s.age += dt;
-    if (s.age >= SHROOM_LIFE) {
-      m.shroom = null;
-      m.shroomIn = shroomGap(m);
-      m.events.push({ type: "shroom-gone" });
+    it.age += dt;
+    if (it.age >= item.life) {
+      m[kind] = null;
+      m[`${kind}In`] = itemGap(m, kind);
+      m.events.push({ type: `${kind}-gone` });
       return;
     }
     for (const p of list) {
       if (!p.connected || !m.players.has(p.id)) continue;
-      if (touches(p, s.x, s.y, SHROOM_R)) {
-        p.big = BIG_POWER;
-        m.shroom = null;
-        m.shroomIn = shroomGap(m);
-        m.events.push({ type: "shroom-get", id: p.id, name: p.name, x: s.x, y: s.y });
+      if (touches(p, it.x, it.y, item.r)) {
+        p[item.field] = item.power;
+        m[kind] = null;
+        m[`${kind}In`] = itemGap(m, kind);
+        m.events.push({ type: `${kind}-get`, id: p.id, name: p.name, x: it.x, y: it.y });
         return;
       }
     }
@@ -510,9 +535,11 @@
         p.star = Math.max(0, p.star - dt);
         if (p.star === 0) m.events.push({ type: "star-end", id: p.id });
       }
-      if (p.big > 0) {
-        p.big = Math.max(0, p.big - dt);
-        if (p.big === 0) m.events.push({ type: "shroom-end", id: p.id });
+      for (const [kind, item] of Object.entries(ITEMS)) {
+        if (p[item.field] > 0) {
+          p[item.field] = Math.max(0, p[item.field] - dt);
+          if (p[item.field] === 0) m.events.push({ type: `${kind}-end`, id: p.id });
+        }
       }
       const target = p.big > 0 ? BIG_SCALE : 1;
       p.scale += (target - p.scale) * Math.min(1, GROW_RATE * dt);
@@ -543,7 +570,7 @@
     const list = [...m.players.values()];
     m.powered = list.some((p) => p.star > 0);
     stepStar(m, dt, list);
-    stepShroom(m, dt, list);
+    for (const kind of Object.keys(ITEMS)) stepItem(m, dt, list, kind);
     for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) collidePlayers(list[i], list[j]);
 
     // Substep the ball so fast shots don't tunnel through players or posts.
@@ -590,6 +617,12 @@
     BIG_SCALE,
     SHROOM_GAP_MIN,
     SHROOM_GAP_MAX,
+    FLOWER_R,
+    FLOWER_LIFE,
+    FLOWER_POWER,
+    FLOWER_POINTS,
+    FLOWER_GAP_MIN,
+    FLOWER_GAP_MAX,
     DISCONNECT_GRACE,
     TEAMS,
     createMatch,
