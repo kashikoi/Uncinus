@@ -1,6 +1,6 @@
 {
-  "name": "Uncinus",
-  "short_name": "Uncinus",
+  "name": "Sky Soccer",
+  "short_name": "Sky Soccer",
   "description": "Party soccer in the clouds: the Mac is the pitch, every phone is a blocky player.",
   "start_url": "./index.html",
   "display": "standalone",

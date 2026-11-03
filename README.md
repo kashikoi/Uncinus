@@ -1,5 +1,7 @@
 # Uncinus
 
+> Shown to players as **Sky Soccer** (page titles, logo, app name). The repo, URLs and code keep the name Uncinus.
+
 **Sky soccer. The Mac is the pitch. Every phone is a blocky player.**
 
 Uncinus (after *cirrus uncinus* — the hooked "mares' tails" cloud) is a party soccer game for the kashikoi cloud

@@ -7,6 +7,8 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
   player. Part of the kashikoi cloud-themed suite; sibling of **Volutus** (same pairing/relay architecture — keep
   shared files `js/qr.js`, `js/net.js`, `js/util.js`, `relay/src/index.js` in sync when fixing bugs in either).
   Repo: github.com/kashikoi/Uncinus. Pages: https://kashikoi.github.io/Uncinus/ (served from `main` /).
+- Player-facing name is **Sky Soccer** (titles, brand, manifest, settings footer); "Uncinus" stays for the repo,
+  URLs, `window.Uncinus`, storage keys and the relay.
 - Vanilla HTML/CSS/JS, no build step, no external JS dependencies. Themes Day (default) / Twilight / Night / Random.
 - **Floaty, slightly unruly controls are a design goal** (owner: "the lack of complete control … makes the game
   unpredictable and fun with a lot of players"). Don't "fix" `RESPONSE`/dash momentum into tight controls.
