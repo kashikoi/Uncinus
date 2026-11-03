@@ -200,3 +200,96 @@ test("disconnected players leave after the grace period; reset clears score", ()
   M.resetMatch(m);
   assert.deepEqual(m.score, { left: 0, right: 0 });
 });
+
+test("setTeam moves a player to the chosen team's half with a new number", () => {
+  const m = M.createMatch();
+  const a = M.addPlayer(m, "aaaaaa", "Ann"); // left #1
+  M.addPlayer(m, "bbbbbb", "Bob"); // right #1
+  assert.equal(M.setTeam(m, "aaaaaa", "right"), a);
+  assert.equal(a.team, "right");
+  assert.equal(a.number, 2);
+  assert.ok(a.x > M.CX);
+  assert.equal(M.setTeam(m, "aaaaaa", "purple"), null);
+  assert.equal(M.setTeam(m, "nobody", "left"), null);
+  assert.equal(M.setTeam(m, "aaaaaa", "right").number, 2, "same team is a no-op");
+});
+
+const seeded = (seed = 1) => () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+
+test("mayhem spawns a star roughly once a minute, and it fades if nobody grabs it", () => {
+  const m = M.createMatch();
+  m.rand = seeded(3);
+  run(m, M.STAR_GAP_MAX + 1);
+  assert.equal(m.star, null, "no stars unless mayhem is on");
+  M.setMayhem(m, true);
+  const wait = m.starIn;
+  assert.ok(wait >= M.STAR_GAP_MIN && wait <= M.STAR_GAP_MAX);
+  let t = 0;
+  for (; !m.star && t < M.STAR_GAP_MAX + 1; t += 1 / 60) M.step(m, 1 / 60);
+  assert.ok(m.star, "a star appeared");
+  assert.ok(Math.abs(t - wait) < 0.1, `on schedule (${t} vs ${wait})`);
+  assert.ok(M.drainEvents(m).some((e) => e.type === "star-spawn"));
+  assert.ok(m.star.x > M.PITCH.L && m.star.x < M.PITCH.R && m.star.y > M.PITCH.T && m.star.y < M.PITCH.B);
+  run(m, M.STAR_LIFE + 0.1);
+  assert.equal(m.star, null);
+  assert.ok(M.drainEvents(m).some((e) => e.type === "star-gone"));
+  M.setMayhem(m, false);
+  run(m, M.STAR_GAP_MAX + 1);
+  assert.equal(m.star, null);
+});
+
+function starMatch() {
+  const m = M.createMatch();
+  m.rand = seeded(5);
+  const hero = M.addPlayer(m, "aaaaaa", "Hero");
+  const foe = M.addPlayer(m, "bbbbbb", "Foe");
+  M.setMayhem(m, true);
+  m.star = { x: hero.x, y: hero.y, vx: 0, vy: 0, age: 0 };
+  M.step(m, 1 / 120);
+  return { m, hero, foe };
+}
+
+test("grabbing the star powers a player up for STAR_POWER seconds", () => {
+  const { m, hero } = starMatch();
+  assert.equal(m.star, null);
+  assert.ok(hero.star > M.STAR_POWER - 0.1);
+  assert.deepEqual(M.drainEvents(m).find((e) => e.type === "star-get").id, "aaaaaa");
+  run(m, M.STAR_POWER + 0.1);
+  assert.equal(hero.star, 0);
+  assert.ok(M.drainEvents(m).some((e) => e.type === "star-end" && e.id === "aaaaaa"));
+});
+
+test("a star player can't be pushed, and flings whoever they touch", () => {
+  const { m, hero, foe } = starMatch();
+  Object.assign(hero, { x: M.CX - 200, y: M.CY + 250, vx: 0, vy: 0 });
+  Object.assign(foe, { x: M.CX - 170, y: M.CY + 250, vx: -400, vy: 0 });
+  M.step(m, 1 / 120);
+  assert.ok(Math.abs(hero.x - (M.CX - 200)) < 0.01, "hero didn't move");
+  assert.ok(foe.vx > 300, `foe flung away (${foe.vx})`);
+});
+
+test("while someone has the star only they can touch the ball", () => {
+  const { m, hero, foe } = starMatch();
+  Object.assign(hero, { x: M.CX - 300, y: M.CY - 250 });
+  Object.assign(foe, { x: M.CX + 200, y: M.CY });
+  Object.assign(m.ball, { x: M.CX, y: M.CY, vx: 600, vy: 0 });
+  run(m, 0.5);
+  assert.ok(m.ball.x > foe.x, "ball passed straight through the foe");
+  Object.assign(hero, { x: M.CX - 60, y: M.CY + 200, vx: 0, vy: 0 });
+  Object.assign(m.ball, { x: M.CX, y: M.CY + 200, vx: -600, vy: 0 });
+  run(m, 0.3);
+  assert.ok(m.ball.vx > 0, "ball bounced off the star player");
+  assert.equal(m.ball.lastTouch, "aaaaaa");
+  run(m, M.STAR_POWER);
+  Object.assign(foe, { x: M.CX + 200, y: M.CY, vx: 0, vy: 0 });
+  Object.assign(m.ball, { x: M.CX, y: M.CY, vx: 600, vy: 0 });
+  run(m, 0.5);
+  assert.ok(m.ball.x < foe.x, "after the power ends everyone plays the ball again");
+});
+
+test("resetMatch and turning mayhem off end any star power", () => {
+  const { m, hero } = starMatch();
+  M.setMayhem(m, false);
+  assert.equal(hero.star, 0);
+  assert.equal(m.powered, false);
+});

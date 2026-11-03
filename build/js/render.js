@@ -4,7 +4,7 @@
 
   const U = root.Uncinus;
   const M = U.match;
-  const { W, H, PITCH, CX, CY, GOAL_HALF, GOAL_DEPTH, POST_R, HALF, BALL_R, TEAMS } = M;
+  const { W, H, PITCH, CX, CY, GOAL_HALF, GOAL_DEPTH, POST_R, HALF, BALL_R, TEAMS, STAR_R, STAR_LIFE } = M;
   const { FACE_OVAL } = U.face;
   // The frame of a face player: the same outline as a block's "Kick ready" ring (block + 9 px lift + 4 px margin).
   const FRAME = { half: HALF + 4, top: HALF + 4, bottom: HALF + 13 };
@@ -100,6 +100,17 @@
     onEvent(ev, m) {
       if (ev.type === "kick") {
         this.fx.push({ kind: "ring", x: ev.x, y: ev.y, age: 0, life: 0.45, color: "#ffffff" });
+      } else if (ev.type === "star-spawn") {
+        this.fx.push({ kind: "ring", x: ev.x, y: ev.y, age: 0, life: 0.6, color: "#fde047" });
+      } else if (ev.type === "star-get") {
+        for (let i = 0; i < 40; i++) {
+          const a = this.rand() * Math.PI * 2;
+          const sp = 120 + this.rand() * 300;
+          this.fx.push({
+            kind: "confetti", x: ev.x, y: ev.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 150,
+            rot: this.rand() * 6, age: 0, life: 1 + this.rand() * 0.6, color: i % 2 ? "#fde047" : "#ffffff", size: 5 + this.rand() * 5,
+          });
+        }
       } else if (ev.type === "goal") {
         const color = TEAMS[ev.team].color;
         const gx = ev.team === "left" ? PITCH.R + GOAL_DEPTH / 2 : PITCH.L - GOAL_DEPTH / 2;
@@ -115,6 +126,7 @@
     }
 
     render(m, dt) {
+      this.t = m.t;
       const ctx = this.ctx;
       const pal = PALETTES[this.theme];
       const { dpr, scale, ox, oy, w, h } = this.view;
@@ -159,7 +171,11 @@
       }
       this.drawShadow(ctx, pal, m.ball.x + 5, m.ball.y + BALL_R * 0.8, BALL_R * 1.05, 5, 1);
       this.drawTrails(ctx, players);
-      for (const p of players) this.drawPlayer(ctx, p);
+      for (const p of players) {
+        this.drawPlayer(ctx, p);
+        if (p.star > 0) this.drawStarAura(ctx, p);
+      }
+      if (m.star) this.drawStar(ctx, m.star);
       this.drawBall(ctx, m.ball);
       this.drawNets(ctx, pal, "front");
       this.drawFx(ctx, dt);
@@ -395,6 +411,67 @@
       ctx.beginPath();
       ctx.roundRect(p.x - FRAME.half, top, FRAME.half * 2, height, 10);
       ctx.stroke();
+      ctx.restore();
+    }
+
+    // A chunky five-point star with eyes that bobs, glows, and blinks before it fades away.
+    drawStar(ctx, s) {
+      const left = STAR_LIFE - s.age;
+      if (left < 3 && Math.floor(left * 6) % 2) return;
+      const bob = Math.sin(this.t * 5) * 4;
+      ctx.save();
+      ctx.translate(s.x, s.y + bob);
+      ctx.rotate(Math.sin(this.t * 3) * 0.15);
+      ctx.shadowColor = "rgba(253, 224, 71, 0.95)";
+      ctx.shadowBlur = 24;
+      ctx.beginPath();
+      for (let i = 0; i < 10; i++) {
+        const r = i % 2 ? STAR_R * 0.5 : STAR_R * 1.15;
+        const a = -Math.PI / 2 + (i * Math.PI) / 5;
+        ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
+      }
+      ctx.closePath();
+      const g = ctx.createLinearGradient(0, -STAR_R, 0, STAR_R);
+      g.addColorStop(0, "#fef08a");
+      g.addColorStop(1, "#f59e0b");
+      ctx.fillStyle = g;
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = "#b45309";
+      ctx.lineWidth = 3;
+      ctx.lineJoin = "round";
+      ctx.stroke();
+      ctx.fillStyle = "#111827";
+      for (const ex of [-5, 5]) {
+        ctx.beginPath();
+        ctx.ellipse(ex, -1, 2.4, 5.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // Rainbow, glowing outline plus orbiting sparkles while a player has star power (blinks as it runs out).
+    drawStarAura(ctx, p) {
+      if (p.star < 2 && Math.floor(p.star * 8) % 2) return;
+      const hue = (this.t * 540) % 360;
+      ctx.save();
+      ctx.globalAlpha = p.connected ? 1 : 0.4;
+      ctx.strokeStyle = `hsl(${hue}, 100%, 60%)`;
+      ctx.shadowColor = `hsl(${(hue + 60) % 360}, 100%, 65%)`;
+      ctx.shadowBlur = 18;
+      ctx.lineWidth = 4.5;
+      ctx.beginPath();
+      ctx.roundRect(p.x - FRAME.half, p.y - FRAME.top, FRAME.half * 2, FRAME.top + FRAME.bottom, 10);
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      const cy = p.y + (FRAME.bottom - FRAME.top) / 2;
+      for (let i = 0; i < 4; i++) {
+        const a = this.t * 4 + (i * Math.PI) / 2;
+        ctx.fillStyle = `hsl(${(hue + i * 90) % 360}, 100%, 70%)`;
+        ctx.beginPath();
+        ctx.arc(p.x + Math.cos(a) * (FRAME.half + 9), cy + Math.sin(a) * (FRAME.top + 9), 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
     }
 

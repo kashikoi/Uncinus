@@ -18,7 +18,8 @@ input to the big screen in real time. It shares its pairing, QR and relay code w
    drop the background, becomes your player on the big screen: just your face inside a team-colour frame that
    glows when Kick is ready. The photo is remembered on your phone; tap your
    swatch during a match to retake it.
-3. Players are dealt onto **Sky** (blue, attacks →) and **Ember** (orange, attacks ←) to keep the teams even.
+3. Players are dealt onto **Sky** (blue, attacks →) and **Ember** (orange, attacks ←) to keep the teams even — or,
+   with **Settings → Players pick their team**, each new player chooses on their phone.
 4. **Drag** anywhere on the pad to run (or tap **Tilt**), and tap **Kick** to dash — dash into the ball to boot it.
    Kick recharges in under a second. Shoulder-barge opponents freely.
 
@@ -26,6 +27,9 @@ Goals count only when the whole ball crosses the goal line inside the net perime
 outside the net does not score. Goals pop confetti on the big screen and flash every phone ("YOU SCORED!" /
 "Conceded"). Own goals count for the other team. After each goal everyone resets to kickoff. Settings has
 **Reset score** and **New room**.
+
+**Mayhem mode** (Settings → Rules): about once a minute a star drifts onto the pitch. Whoever grabs it is invincible
+for 10 seconds — they can't be blocked, they bowl over anyone they touch, and only they can touch the ball.
 
 No phone handy? Press <kbd>K</kbd> on the Mac to play with the arrow keys / WASD and Space to kick.
 

@@ -1271,3 +1271,160 @@ button.me__swatch {
 .cam__shutter:active {
   transform: scale(0.94);
 }
+
+/* ---------- Rules toggles ---------- */
+.toggle {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+.toggle input {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: none;
+  position: relative;
+  width: 42px;
+  height: 24px;
+  margin: 2px 0 0;
+  border-radius: 999px;
+  background: var(--line);
+  border: 1px solid var(--glass-border);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.toggle input::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  transition: transform 0.15s;
+}
+
+.toggle input:checked {
+  background: var(--accent);
+}
+
+.toggle input:checked::after {
+  transform: translateX(18px);
+}
+
+.toggle__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.toggle__text small {
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+/* ---------- Mayhem ---------- */
+.star-toast {
+  position: fixed;
+  left: 50%;
+  top: 88px;
+  transform: translateX(-50%);
+  padding: 10px 20px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #fde047, #f59e0b);
+  color: #422006;
+  font-weight: 800;
+  font-size: 1.15rem;
+  box-shadow: 0 10px 30px -10px rgba(245, 158, 11, 0.8);
+  pointer-events: none;
+  z-index: 5;
+  white-space: nowrap;
+}
+
+.star-toast.is-in {
+  animation: star-pop 0.5s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+
+@keyframes star-pop {
+  from {
+    transform: translateX(-50%) scale(0.3);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+}
+
+.goal-flash.is-star {
+  background: linear-gradient(135deg, #fde047, #f59e0b);
+  color: #422006;
+  padding: 0 24px;
+  text-align: center;
+}
+
+.goal-flash.is-star span {
+  font-size: clamp(2rem, 11vw, 3.4rem);
+}
+
+@keyframes star-hue {
+  from {
+    filter: hue-rotate(0deg);
+  }
+  to {
+    filter: hue-rotate(360deg);
+  }
+}
+
+body.is-star .me {
+  border-color: #fde047;
+  box-shadow: 0 0 0 3px #fde047, 0 0 24px #f59e0b;
+}
+
+body.is-star .kick-btn {
+  animation: star-hue 1s linear infinite;
+}
+
+/* ---------- Team picker ---------- */
+.team-pick__opts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.team-opt {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 18px 10px;
+  border-radius: 16px;
+  border: 0;
+  color: #fff;
+  font: 600 0.8rem var(--font-ui);
+  cursor: pointer;
+  box-shadow: inset 0 -6px 0 rgba(0, 0, 0, 0.2);
+}
+
+.team-opt b {
+  font-size: 1.4rem;
+  font-weight: 800;
+}
+
+.team-opt--left {
+  background: var(--sky-team);
+}
+
+.team-opt--right {
+  background: var(--ember-team);
+}
+
+.team-opt:active {
+  transform: scale(0.96);
+}

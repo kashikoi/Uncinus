@@ -48,6 +48,8 @@
   // ---------- Joining ----------
   function showJoin(error) {
     stopLink();
+    el.teamPick.hidden = true;
+    document.body.classList.remove("is-star");
     el.playScreen.hidden = true;
     el.joinScreen.hidden = false;
     el.joinError.hidden = !error;
@@ -105,6 +107,12 @@
       case "score":
         renderScore(msg);
         break;
+      case "pick":
+        showTeamPick(msg.counts || {});
+        break;
+      case "star":
+        setStar(Boolean(msg.on));
+        break;
       case "goal":
         renderScore(msg.score || {});
         flashGoal(msg);
@@ -121,12 +129,35 @@
     }
   }
 
+  // Counts include this player on the team they were dealt onto, so leave them out of it.
+  function showTeamPick(counts) {
+    for (const team of ["left", "right"]) {
+      const n = Math.max(0, (Number(counts[team]) || 0) - (state.team === team ? 1 : 0));
+      el[team === "left" ? "pickLeft" : "pickRight"].textContent = n === 1 ? "1 player" : `${n} players`;
+    }
+    el.teamPick.hidden = false;
+  }
+
+  function setStar(on) {
+    document.body.classList.toggle("is-star", on);
+    if (!on) return;
+    if (navigator.vibrate) navigator.vibrate([80, 40, 80, 40, 160]);
+    el.goalFlash.classList.remove("is-ours");
+    el.goalFlash.classList.add("is-star");
+    el.goalFlashText.textContent = "⭐ INVINCIBLE!";
+    el.goalFlashWho.textContent = "Nobody can stop you — only you can touch the ball";
+    el.goalFlash.hidden = false;
+    clearTimeout(state.goalTimer);
+    state.goalTimer = setTimeout(() => (el.goalFlash.hidden = true), 2200);
+  }
+
   function renderScore({ left, right }) {
     if (Number.isInteger(left)) el.scoreLeft.textContent = left;
     if (Number.isInteger(right)) el.scoreRight.textContent = right;
   }
 
   function flashGoal(msg) {
+    el.goalFlash.classList.remove("is-star");
     const ours = msg.team === state.team;
     const mine = msg.scorerId === state.id;
     el.goalFlash.classList.toggle("is-ours", ours);
@@ -436,7 +467,7 @@
       "status", "leaveBtn", "stickArea", "stickBase", "stickKnob", "stickHint", "tiltBtn", "tiltLabel", "overlay",
       "overlayText", "overlayBtn", "meNumber", "scoreLeft", "scoreRight", "kickBtn", "goalFlash", "goalFlashText", "goalFlashWho",
       "appVersion", "faceThumb", "faceImg", "faceBlank", "faceHint", "faceBtn", "faceClear", "cam", "camVideo", "camShot",
-      "camError", "camCancel", "camSnap", "camRetake", "camUse",
+      "camError", "camCancel", "camSnap", "camRetake", "camUse", "teamPick", "pickLeft", "pickRight",
     ].forEach((id) => (el[id] = $(id)));
     el.appVersion.textContent = `v${util.APP_VERSION}`;
 
@@ -452,6 +483,13 @@
       join(room, name);
     });
     el.leaveBtn.addEventListener("click", () => showJoin());
+
+    el.teamPick.addEventListener("click", (ev) => {
+      const opt = ev.target.closest("[data-team]");
+      if (!opt || !state.link) return;
+      state.link.send({ t: "team", team: opt.dataset.team });
+      el.teamPick.hidden = true;
+    });
 
     el.faceBtn.addEventListener("click", openCamera);
     el.faceThumb.addEventListener("click", openCamera);

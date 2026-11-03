@@ -25,6 +25,16 @@
   const BALL_MAX = 1150;
   const WALL_E = 0.78;
 
+  // Mayhem mode: a star drifts onto the pitch now and then; grabbing it makes a player untouchable and
+  // the only one who can play the ball until it wears off.
+  const STAR_R = 22;
+  const STAR_SPEED = 90;
+  const STAR_LIFE = 15; // seconds an uncollected star stays on the pitch
+  const STAR_POWER = 10; // seconds of invincibility
+  const STAR_GAP_MIN = 40; // seconds between stars (uniform, ~1 a minute)
+  const STAR_GAP_MAX = 80;
+  const STAR_BUMP = 520; // knock-back speed for anyone a star player runs into
+
   const GOAL_PAUSE = 2.6;
   const DISCONNECT_GRACE = 20;
   const MAX_PLAYERS = 12;
@@ -46,6 +56,11 @@
       ball: { x: CX, y: CY, vx: 0, vy: 0, spin: 0, lastTouch: null },
       events: [],
       nextNumber: { left: 1, right: 1 },
+      mayhem: false,
+      powered: false,
+      star: null,
+      starIn: 0,
+      rand: Math.random,
     };
   }
 
@@ -93,12 +108,25 @@
       dash: 0,
       cooldown: 0,
       kickedBall: false,
+      star: 0,
       connected: true,
       goneFor: 0,
       joinedAt: m.t,
     };
     m.players.set(id, player);
     return player;
+  }
+
+  // Move a player to the chosen team with a new jersey number and a kickoff spot on that half.
+  function setTeam(m, id, team) {
+    const p = m.players.get(id);
+    if (!p || !TEAMS[team]) return null;
+    if (p.team === team) return p;
+    p.team = team;
+    p.number = m.nextNumber[team]++;
+    const spot = formationSpot(team, teamCounts(m)[team] - 1);
+    Object.assign(p, { x: spot.x, y: spot.y, vx: 0, vy: 0, dash: 0, facing: team === "left" ? 0 : Math.PI });
+    return p;
   }
 
   function disconnectPlayer(m, id) {
@@ -163,11 +191,13 @@
 
   function resetMatch(m) {
     m.score = { left: 0, right: 0 };
+    clearStars(m);
     resetKickoff(m);
     m.events.push({ type: "reset" });
   }
 
   function collidePlayerBall(m, p) {
+    if (m.powered && p.star <= 0) return;
     const b = m.ball;
     const cx = clamp(b.x, p.x - HALF, p.x + HALF);
     const cy = clamp(b.y, p.y - HALF, p.y + HALF);
@@ -220,6 +250,16 @@
     if (d >= r || d < 1e-6) return;
     const nx = dx / d;
     const ny = dy / d;
+    if ((a.star > 0) !== (c.star > 0)) {
+      // The star player doesn't budge; whoever they touch is flung away.
+      const [hero, other, sx, sy] = a.star > 0 ? [a, c, nx, ny] : [c, a, -nx, -ny];
+      other.x += sx * (r - d);
+      other.y += sy * (r - d);
+      other.vx = sx * STAR_BUMP + hero.vx * 0.3;
+      other.vy = sy * STAR_BUMP + hero.vy * 0.3;
+      other.dash = 0;
+      return;
+    }
     const push = (r - d) / 2;
     a.x -= nx * push;
     a.y -= ny * push;
@@ -330,6 +370,72 @@
     m.phaseTime = 0;
   }
 
+  const starGap = (m) => STAR_GAP_MIN + m.rand() * (STAR_GAP_MAX - STAR_GAP_MIN);
+
+  function clearStars(m) {
+    m.star = null;
+    for (const p of m.players.values()) {
+      if (p.star > 0) m.events.push({ type: "star-end", id: p.id });
+      p.star = 0;
+    }
+    m.powered = false;
+    m.starIn = starGap(m);
+  }
+
+  function setMayhem(m, on) {
+    m.mayhem = Boolean(on);
+    clearStars(m);
+  }
+
+  function spawnStar(m) {
+    const a = m.rand() * Math.PI * 2;
+    m.star = {
+      x: PITCH.L + 160 + m.rand() * (PITCH.R - PITCH.L - 320),
+      y: PITCH.T + 80 + m.rand() * (PITCH.B - PITCH.T - 160),
+      vx: Math.cos(a) * STAR_SPEED,
+      vy: Math.sin(a) * STAR_SPEED,
+      age: 0,
+    };
+    m.events.push({ type: "star-spawn", x: m.star.x, y: m.star.y });
+  }
+
+  function stepStar(m, dt, list) {
+    if (!m.mayhem || m.phase !== "play") return;
+    const s = m.star;
+    if (!s) {
+      if (m.powered) return;
+      m.starIn -= dt;
+      if (m.starIn <= 0) spawnStar(m);
+      return;
+    }
+    s.age += dt;
+    s.x += s.vx * dt;
+    s.y += s.vy * dt;
+    if (s.x < PITCH.L + STAR_R || s.x > PITCH.R - STAR_R) s.vx *= -1;
+    if (s.y < PITCH.T + STAR_R || s.y > PITCH.B - STAR_R) s.vy *= -1;
+    s.x = clamp(s.x, PITCH.L + STAR_R, PITCH.R - STAR_R);
+    s.y = clamp(s.y, PITCH.T + STAR_R, PITCH.B - STAR_R);
+    if (s.age >= STAR_LIFE) {
+      m.star = null;
+      m.starIn = starGap(m);
+      m.events.push({ type: "star-gone" });
+      return;
+    }
+    for (const p of list) {
+      if (!p.connected || !m.players.has(p.id)) continue;
+      const dx = s.x - clamp(s.x, p.x - HALF, p.x + HALF);
+      const dy = s.y - clamp(s.y, p.y - HALF, p.y + HALF);
+      if (Math.hypot(dx, dy) < STAR_R) {
+        p.star = STAR_POWER;
+        m.star = null;
+        m.powered = true;
+        m.starIn = starGap(m);
+        m.events.push({ type: "star-get", id: p.id, name: p.name, x: s.x, y: s.y });
+        return;
+      }
+    }
+  }
+
   function step(m, dtRaw) {
     const dt = clamp(dtRaw, 0, 0.05);
     m.t += dt;
@@ -346,6 +452,10 @@
         }
       }
       p.cooldown = Math.max(0, p.cooldown - dt);
+      if (p.star > 0) {
+        p.star = Math.max(0, p.star - dt);
+        if (p.star === 0) m.events.push({ type: "star-end", id: p.id });
+      }
       p.dash = Math.max(0, p.dash - dt);
       // While dashing, momentum wins; otherwise ease toward the stick (sluggish on purpose).
       const kk = p.dash > 0 ? k * 0.15 : k;
@@ -369,6 +479,8 @@
     }
 
     const list = [...m.players.values()];
+    m.powered = list.some((p) => p.star > 0);
+    stepStar(m, dt, list);
     for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) collidePlayers(list[i], list[j]);
 
     // Substep the ball so fast shots don't tunnel through players or posts.
@@ -404,10 +516,17 @@
     MAX_PLAYERS,
     GOAL_PAUSE,
     KICK_COOLDOWN,
+    STAR_R,
+    STAR_LIFE,
+    STAR_POWER,
+    STAR_GAP_MIN,
+    STAR_GAP_MAX,
     DISCONNECT_GRACE,
     TEAMS,
     createMatch,
     addPlayer,
+    setTeam,
+    setMayhem,
     disconnectPlayer,
     sanitizeInput,
     setInput,

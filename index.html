@@ -6,13 +6,13 @@
   <title>Uncinus — sky soccer, every phone is a player</title>
   <meta name="description" content="Party soccer in the clouds: the Mac is the pitch, every phone is a blocky player." />
   <meta name="theme-color" content="#0f172a" />
-  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.11.03.5" />
-  <link rel="apple-touch-icon" href="icon.svg?v=2026.11.03.5" />
-  <link rel="manifest" href="manifest.webmanifest?v=2026.11.03.5" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.11.03.6" />
+  <link rel="apple-touch-icon" href="icon.svg?v=2026.11.03.6" />
+  <link rel="manifest" href="manifest.webmanifest?v=2026.11.03.6" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=2026.11.03.5" />
+  <link rel="stylesheet" href="styles.css?v=2026.11.03.6" />
   <script>
     // Resolve atmosphere before first paint to prevent a flash of the wrong theme.
     (function () {
@@ -72,6 +72,8 @@
     <span class="scoreboard__team scoreboard__team--right">Ember</span>
   </div>
 
+  <div class="star-toast" id="starToast" hidden></div>
+
   <div class="goal-banner" id="goalBanner" hidden>
     <div class="goal-banner__word">GOAL!</div>
     <div class="goal-banner__who" id="goalWho"></div>
@@ -121,6 +123,17 @@
       </div>
     </section>
     <section class="modal__section">
+      <h3>Rules</h3>
+      <label class="toggle">
+        <input type="checkbox" id="teamPickToggle" />
+        <span class="toggle__text"><b>Players pick their team</b><small>New players choose Sky or Ember on their phone instead of being dealt onto the smaller team.</small></span>
+      </label>
+      <label class="toggle">
+        <input type="checkbox" id="mayhemToggle" />
+        <span class="toggle__text"><b>&#11088; Mayhem mode</b><small>About once a minute a star drifts onto the pitch. Grab it for 10 seconds of invincibility: you can't be blocked, you bowl people over, and only you can touch the ball.</small></span>
+      </label>
+    </section>
+    <section class="modal__section">
       <h3>Match</h3>
       <p class="muted">Reset the score and kick off again, or start a fresh room with a new code (everyone scans again).</p>
       <div class="field-row">
@@ -141,12 +154,12 @@
     <p class="modal__foot muted">Uncinus <span id="version"></span> · part of the kashikoi cloud suite</p>
   </dialog>
 
-  <script src="js/util.js?v=2026.11.03.5"></script>
-  <script src="js/qr.js?v=2026.11.03.5"></script>
-  <script src="js/net.js?v=2026.11.03.5"></script>
-  <script src="js/face.js?v=2026.11.03.5"></script>
-  <script src="js/match.js?v=2026.11.03.5"></script>
-  <script src="js/render.js?v=2026.11.03.5"></script>
-  <script src="js/host.js?v=2026.11.03.5"></script>
+  <script src="js/util.js?v=2026.11.03.6"></script>
+  <script src="js/qr.js?v=2026.11.03.6"></script>
+  <script src="js/net.js?v=2026.11.03.6"></script>
+  <script src="js/face.js?v=2026.11.03.6"></script>
+  <script src="js/match.js?v=2026.11.03.6"></script>
+  <script src="js/render.js?v=2026.11.03.6"></script>
+  <script src="js/host.js?v=2026.11.03.6"></script>
 </body>
 </html>

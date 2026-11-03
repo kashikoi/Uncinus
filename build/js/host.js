@@ -6,6 +6,8 @@
   const { util, match: M, face: F } = U;
   const ROOM_KEY = "uncinus_room";
   const KEYBOARD_ID = "keyboard";
+  const TEAM_PICK_KEY = "uncinus_team_pick";
+  const MAYHEM_KEY = "uncinus_mayhem";
 
   const el = {};
   const state = {
@@ -22,6 +24,8 @@
     keys: new Set(),
     wakeLock: null,
     bannerTimer: null,
+    starTimer: null,
+    teamPick: false,
   };
 
   const $ = (id) => document.getElementById(id);
@@ -67,15 +71,35 @@
   }
 
   function greet(id, name) {
+    const isNew = !state.match.players.has(id);
     const p = M.addPlayer(state.match, id, name);
     if (!p) {
       sendTo(id, { t: "full" });
       return;
     }
-    const team = M.TEAMS[p.team];
-    sendTo(id, { t: "you", name: p.name, team: p.team, teamName: team.name, color: team.color, number: p.number });
+    sendYou(p);
     sendTo(id, { t: "score", ...state.match.score });
+    if (state.teamPick && isNew) sendTo(id, { t: "pick", counts: teamCounts() });
     if (id !== KEYBOARD_ID && state.joinOpen && realPlayers().length === 1) setJoinOpen(false);
+  }
+
+  function sendYou(p) {
+    const team = M.TEAMS[p.team];
+    sendTo(p.id, { t: "you", name: p.name, team: p.team, teamName: team.name, color: team.color, number: p.number });
+  }
+
+  function teamCounts() {
+    const counts = { left: 0, right: 0 };
+    for (const p of state.match.players.values()) counts[p.team]++;
+    return counts;
+  }
+
+  function pickTeam(id, team) {
+    if (!state.teamPick) return;
+    const p = M.setTeam(state.match, id, team);
+    if (!p) return;
+    sendYou(p);
+    renderRoster();
   }
 
   function handleMessage(msg) {
@@ -93,6 +117,7 @@
       case "msg":
         if (msg.d && msg.d.t === "in") M.setInput(state.match, msg.from, msg.d);
         else if (msg.d && msg.d.t === "face" && state.match.players.has(msg.from)) receiveFace(msg.from, msg.d);
+        else if (msg.d && msg.d.t === "team") pickTeam(msg.from, msg.d.team);
         return;
       default:
         return;
@@ -130,8 +155,50 @@
       } else if (ev.type === "reset") {
         renderScore();
         broadcast({ t: "score", ...state.match.score });
+      } else if (ev.type === "star-spawn") {
+        showStarToast("⭐ A star appeared — grab it!");
+      } else if (ev.type === "star-get") {
+        showStarToast(`⭐ ${ev.name} is invincible!`);
+        sendTo(ev.id, { t: "star", on: true, secs: M.STAR_POWER });
+      } else if (ev.type === "star-end") {
+        sendTo(ev.id, { t: "star", on: false });
       }
     }
+  }
+
+  function showStarToast(text) {
+    el.starToast.textContent = text;
+    el.starToast.hidden = false;
+    el.starToast.classList.remove("is-in");
+    void el.starToast.offsetWidth;
+    el.starToast.classList.add("is-in");
+    clearTimeout(state.starTimer);
+    state.starTimer = setTimeout(() => (el.starToast.hidden = true), 3000);
+  }
+
+  function setRule(key, on) {
+    try {
+      localStorage.setItem(key, on ? "1" : "0");
+    } catch {
+      // Not persisted; still applies for this session.
+    }
+    if (key === TEAM_PICK_KEY) state.teamPick = on;
+    else {
+      M.setMayhem(state.match, on);
+      if (!on) el.starToast.hidden = true;
+    }
+  }
+
+  function loadRules() {
+    const get = (key) => {
+      try {
+        return localStorage.getItem(key) === "1";
+      } catch {
+        return false;
+      }
+    };
+    state.teamPick = get(TEAM_PICK_KEY);
+    M.setMayhem(state.match, get(MAYHEM_KEY));
   }
 
   function showGoalBanner(team, who) {
@@ -257,6 +324,8 @@
 
   function openSettings() {
     updateThemePicker();
+    el.teamPickToggle.checked = state.teamPick;
+    el.mayhemToggle.checked = state.match.mayhem;
     el.relayInput.value = state.relay;
     el.relayError.hidden = true;
     el.settings.showModal();
@@ -312,7 +381,7 @@
       "pitch", "status", "statusText", "kbBtn", "fsBtn", "settingsBtn", "joinCard", "joinMini", "joinClose", "qr", "miniQr",
       "roomCode", "miniRoom", "joinUrl", "joinLink", "emptyHint", "banner", "bannerText", "bannerBtn", "settings",
       "themePicker", "relayInput", "relaySave", "relayReset", "relayError", "newRoomBtn", "resetBtn", "version", "appVersion", "settingsClose",
-      "scoreLeft", "scoreRight", "goalBanner", "goalWho",
+      "scoreLeft", "scoreRight", "goalBanner", "goalWho", "teamPickToggle", "mayhemToggle", "starToast",
     ].forEach((id) => (el[id] = $(id)));
     el.roster_left = $("rosterLeft");
     el.roster_right = $("rosterRight");
@@ -334,6 +403,8 @@
       state.renderer.setTheme(util.setThemePref(chip.dataset.themeVal));
       updateThemePicker();
     });
+    el.teamPickToggle.addEventListener("change", () => setRule(TEAM_PICK_KEY, el.teamPickToggle.checked));
+    el.mayhemToggle.addEventListener("change", () => setRule(MAYHEM_KEY, el.mayhemToggle.checked));
     el.relaySave.addEventListener("click", saveRelay);
     el.relayReset.addEventListener("click", () => {
       el.relayInput.value = util.DEFAULT_RELAY;
@@ -371,6 +442,7 @@
     bind();
     state.renderer = new U.Renderer(el.pitch);
     state.renderer.faces = state.faces;
+    loadRules();
     state.renderer.setTheme(util.applyTheme());
     startRoom(new URLSearchParams(location.search).get("room") || sessionStorage.getItem(ROOM_KEY));
     setJoinOpen(true);
