@@ -43,8 +43,9 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
   player. Renderer draws players scaled about their centre. Events `shroom-spawn/get/gone/end`; host→player `big{on}`.
   Mushroom and flower share `ITEMS` + `stepItem` (stationary pick-up, own gap timer, one holder per kind). Flower
   gives `p.flower = FLOWER_POWER`; goals by the holder (not own goals) add `FLOWER_POINTS`; `goal` events carry `points`.
-- Team sides must stay obvious (players got confused): goals/end lines use the defending team's colour, names are
-  painted at their own goal, chevrons point the attack direction; phones show the `attack-bar` (Defend / Score).
+- Team sides must stay obvious (players got confused): goals/end lines use the defending team's colour, chevrons
+  point the attack direction; phones show the `attack-bar` (Defend / Score). Teams have no displayed names — colour
+  only (`team-chip`); `TEAMS[].name` ("Blue"/"Orange") is just for aria labels and the `you.teamName` field.
 - Relay: one Durable Object per room code, max 12 players, `bye` before every server close (4001/4004/4009/4400).
 - Protocol: host→player `you{name,team,teamName,color,number}`, `score{left,right}`, `goal{team,scorerId,
   scorerName,ownGoal,score}`, `pick{counts}`, `star{on,secs}`, `big{on,secs}`, `flower{on,secs,points}`, `full`; `goal` also has `points`; relay→player `welcome`, `host-left`, `host-back`.

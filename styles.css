@@ -864,19 +864,29 @@ body.pad {
   z-index: 2;
 }
 
-.scoreboard__team {
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-size: 0.85rem;
+/* Teams are known only by colour. */
+.team-chip {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  box-shadow: inset 0 -4px 0 rgba(0, 0, 0, 0.2);
+  vertical-align: middle;
 }
 
-.scoreboard__team--left {
-  color: var(--sky-team);
+.team-chip--small {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.2);
 }
 
-.scoreboard__team--right {
-  color: var(--ember-team);
+.team-chip--left {
+  background: var(--sky-team);
+}
+
+.team-chip--right {
+  background: var(--ember-team);
 }
 
 .scoreboard__num {
@@ -958,16 +968,6 @@ body.pad {
 .mini-score b {
   font-family: var(--font-mono);
   color: var(--ink);
-}
-
-.mini-score__sky {
-  color: var(--sky-team);
-  font-weight: 700;
-}
-
-.mini-score__ember {
-  color: var(--ember-team);
-  font-weight: 700;
 }
 
 .kick-btn {
@@ -1429,8 +1429,9 @@ body.is-star .kick-btn {
 }
 
 .team-opt b {
-  font-size: 1.4rem;
-  font-weight: 800;
+  font-size: 2rem;
+  font-weight: 900;
+  line-height: 1;
 }
 
 .team-opt--left {

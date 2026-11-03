@@ -150,7 +150,7 @@
         renderScore();
         broadcast({ t: "goal", team: ev.team, scorerId: ev.scorerId, scorerName: ev.scorerName, ownGoal: ev.ownGoal, points: ev.points, score: ev.score });
         const team = M.TEAMS[ev.team];
-        const who = ev.scorerName ? (ev.ownGoal ? `Own goal by ${ev.scorerName}` : `${ev.scorerName} scores for ${team.name}`) : `${team.name} scores`;
+        const who = ev.scorerName ? (ev.ownGoal ? `Own goal by ${ev.scorerName}` : `${ev.scorerName} scores!`) : "";
         showGoalBanner(team, ev.points > 1 ? `🌸 ${who} — worth ${ev.points}!` : who, ev.points > 1 ? `${ev.points}× GOAL!` : "GOAL!");
       } else if (ev.type === "reset") {
         renderScore();

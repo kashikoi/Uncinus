@@ -61,8 +61,8 @@
   const MAX_PLAYERS = 12;
 
   const TEAMS = {
-    left: { id: "left", name: "Sky", color: "#38bdf8", dark: "#0369a1" },
-    right: { id: "right", name: "Ember", color: "#fb923c", dark: "#c2410c" },
+    left: { id: "left", name: "Blue", color: "#38bdf8", dark: "#0369a1" },
+    right: { id: "right", name: "Orange", color: "#fb923c", dark: "#c2410c" },
   };
 
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));

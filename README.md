@@ -20,8 +20,9 @@ input to the big screen in real time. It shares its pairing, QR and relay code w
    drop the background, becomes your player on the big screen: just your face inside a team-colour frame that
    glows when Kick is ready. The photo is remembered on your phone; tap your
    swatch during a match to retake it.
-3. Players are dealt onto **Sky** (blue, attacks →) and **Ember** (orange, attacks ←) to keep the teams even — or,
-   with **Settings → Players pick their team**, each new player chooses on their phone.
+3. Players are dealt onto the **blue** team (attacks →) or the **orange** team (attacks ←) to keep the teams even —
+   or, with **Settings → Players pick their team**, each new player picks a colour on their phone. Teams have no
+   names in the game; colour is enough.
 4. **Drag** anywhere on the pad to run (or tap **Tilt**), and tap **Kick** to dash — dash into the ball to boot it.
    Kick recharges in under a second. Shoulder-barge opponents freely.
 
@@ -35,8 +36,7 @@ for 10 seconds — they ghost straight through other players and nobody else can
 the length of the pitch uncontested. Now and then a mushroom sprouts too: eat it to grow 2.5× bigger (and heavier)
 for 12 seconds and shove everyone around. Grab a power flower and, for 20 seconds, every goal you score counts 5.
 
-Which way? Each goal (net, frame and end line) is painted in the colour of the team **defending** it, the team's
-name is painted in front of its own goal, and big chevrons in each half point the way that team attacks. Each
+Which way? Each goal (net, frame and end line) is painted in the colour of the team **defending** it, and big chevrons in each half point the way that team attacks. Each
 phone also shows a mini pitch: your goal says *Defend*, the other one pulses *Score*.
 
 No phone handy? Press <kbd>K</kbd> on the Mac to play with the arrow keys / WASD and Space to kick.

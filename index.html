@@ -6,13 +6,13 @@
   <title>Sky Soccer — every phone is a player</title>
   <meta name="description" content="Party soccer in the clouds: the Mac is the pitch, every phone is a blocky player." />
   <meta name="theme-color" content="#0f172a" />
-  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.11.03.9" />
-  <link rel="apple-touch-icon" href="icon.svg?v=2026.11.03.9" />
-  <link rel="manifest" href="manifest.webmanifest?v=2026.11.03.9" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.11.03.10" />
+  <link rel="apple-touch-icon" href="icon.svg?v=2026.11.03.10" />
+  <link rel="manifest" href="manifest.webmanifest?v=2026.11.03.10" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=2026.11.03.9" />
+  <link rel="stylesheet" href="styles.css?v=2026.11.03.10" />
   <script>
     // Resolve atmosphere before first paint to prevent a flash of the wrong theme.
     (function () {
@@ -65,11 +65,11 @@
   </header>
 
   <div class="scoreboard" aria-live="polite">
-    <span class="scoreboard__team scoreboard__team--left">Sky</span>
+    <span class="team-chip team-chip--left" role="img" aria-label="Blue"></span>
     <span class="scoreboard__num" id="scoreLeft">0</span>
     <span class="scoreboard__dash">–</span>
     <span class="scoreboard__num" id="scoreRight">0</span>
-    <span class="scoreboard__team scoreboard__team--right">Ember</span>
+    <span class="team-chip team-chip--right" role="img" aria-label="Orange"></span>
   </div>
 
   <div class="star-toast" id="starToast" hidden></div>
@@ -103,8 +103,8 @@
     <span><span class="join-card__label">Join</span><span class="room-code room-code--small" id="miniRoom">····</span></span>
   </button>
 
-  <ul class="roster roster--left" id="rosterLeft" hidden aria-label="Team Sky"></ul>
-  <ul class="roster roster--right" id="rosterRight" hidden aria-label="Team Ember"></ul>
+  <ul class="roster roster--left" id="rosterLeft" hidden aria-label="Blue team"></ul>
+  <ul class="roster roster--right" id="rosterRight" hidden aria-label="Orange team"></ul>
 
   <dialog class="modal glass" id="settings" aria-labelledby="settingsTitle">
     <div class="modal__head">
@@ -126,7 +126,7 @@
       <h3>Rules</h3>
       <label class="toggle">
         <input type="checkbox" id="teamPickToggle" />
-        <span class="toggle__text"><b>Players pick their team</b><small>New players choose Sky or Ember on their phone instead of being dealt onto the smaller team.</small></span>
+        <span class="toggle__text"><b>Players pick their team</b><small>New players pick their colour on their phone instead of being dealt onto the smaller team.</small></span>
       </label>
       <label class="toggle">
         <input type="checkbox" id="mayhemToggle" />
@@ -154,12 +154,12 @@
     <p class="modal__foot muted">Sky Soccer <span id="version"></span> · part of the kashikoi cloud suite</p>
   </dialog>
 
-  <script src="js/util.js?v=2026.11.03.9"></script>
-  <script src="js/qr.js?v=2026.11.03.9"></script>
-  <script src="js/net.js?v=2026.11.03.9"></script>
-  <script src="js/face.js?v=2026.11.03.9"></script>
-  <script src="js/match.js?v=2026.11.03.9"></script>
-  <script src="js/render.js?v=2026.11.03.9"></script>
-  <script src="js/host.js?v=2026.11.03.9"></script>
+  <script src="js/util.js?v=2026.11.03.10"></script>
+  <script src="js/qr.js?v=2026.11.03.10"></script>
+  <script src="js/net.js?v=2026.11.03.10"></script>
+  <script src="js/face.js?v=2026.11.03.10"></script>
+  <script src="js/match.js?v=2026.11.03.10"></script>
+  <script src="js/render.js?v=2026.11.03.10"></script>
+  <script src="js/host.js?v=2026.11.03.10"></script>
 </body>
 </html>

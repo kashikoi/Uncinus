@@ -301,8 +301,8 @@
       }
     }
 
-    // Paint each half so nobody wonders which way to go: a team tint, the team's name in front of the goal it
-    // defends, and big chevrons in its colour pointing at the goal it attacks.
+    // Paint each half so nobody wonders which way to go: a team tint and big chevrons in the team's colour
+    // pointing at the goal it attacks.
     drawTeamSides(ctx) {
       ctx.save();
       for (const team of ["left", "right"]) {
@@ -311,16 +311,6 @@
         ctx.fillStyle = color;
         ctx.globalAlpha = 0.1;
         ctx.fillRect(team === "left" ? PITCH.L : CX, PITCH.T, CX - PITCH.L, PITCH.B - PITCH.T);
-
-        ctx.globalAlpha = 0.3;
-        ctx.save();
-        ctx.translate(team === "left" ? PITCH.L + 40 : PITCH.R - 40, CY);
-        ctx.rotate(dir * -Math.PI / 2);
-        ctx.font = "900 46px Inter, system-ui, -apple-system, sans-serif";
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.fillText(TEAMS[team].name.toUpperCase(), 0, 0);
-        ctx.restore();
 
         ctx.globalAlpha = 0.22;
         ctx.strokeStyle = color;

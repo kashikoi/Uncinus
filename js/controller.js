@@ -100,7 +100,7 @@
         state.team = msg.team;
         el.meSwatch.style.backgroundColor = msg.color;
         el.meNumber.textContent = msg.number;
-        el.meColor.textContent = `Team ${msg.teamName} · #${msg.number}`;
+        el.meColor.textContent = `#${msg.number}`;
         state.attack = msg.team === "left" ? "you attack →" : "← you attack";
         renderAttack(msg.team);
         renderTilt();
