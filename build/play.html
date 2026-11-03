@@ -7,12 +7,12 @@
   <meta name="theme-color" content="#0f172a" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.11.03.3" />
-  <link rel="apple-touch-icon" href="icon.svg?v=2026.11.03.3" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.11.03.4" />
+  <link rel="apple-touch-icon" href="icon.svg?v=2026.11.03.4" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=2026.11.03.3" />
+  <link rel="stylesheet" href="styles.css?v=2026.11.03.4" />
   <script>
     (function () {
       try {
@@ -110,18 +110,18 @@
   </main>
 
   <div class="cam" id="cam" hidden role="dialog" aria-modal="true" aria-label="Take your face photo">
-    <p class="cam__title">Line your face up with the oval</p>
+    <p class="cam__title">Fill the oval with your face</p>
     <div class="cam__view">
       <video id="camVideo" playsinline muted autoplay></video>
       <img id="camShot" alt="Your photo" hidden />
       <svg class="cam__mask" viewBox="0 0 100 100" aria-hidden="true">
-        <path fill-rule="evenodd" d="M0 0H100V100H0Z M50 8A34 42 0 1 0 50 92A34 42 0 1 0 50 8Z" />
-        <ellipse class="cam__oval" cx="50" cy="50" rx="34" ry="42" />
-        <path class="cam__guide" d="M30 44H42M58 44H70M44 70Q50 74 56 70" />
+        <path fill-rule="evenodd" d="M0 0H100V100H0Z M50 8A31 42 0 1 0 50 92A31 42 0 1 0 50 8Z" />
+        <ellipse class="cam__oval" cx="50" cy="50" rx="31" ry="42" />
+        <path class="cam__guide" d="M33 46H44M56 46H67M44 72Q50 76 56 72" />
       </svg>
       <p class="cam__error" id="camError" hidden></p>
     </div>
-    <p class="cam__hint" id="camHint">Eyes on the lines, chin at the bottom of the oval.</p>
+    <p class="cam__hint" id="camHint">Move closer until your chin touches the bottom and your hair the top — only the oval is kept.</p>
     <div class="cam__actions">
       <button type="button" class="btn" id="camCancel">Cancel</button>
       <button type="button" class="cam__shutter" id="camSnap" aria-label="Take photo"></button>
@@ -130,9 +130,9 @@
     </div>
   </div>
 
-  <script src="js/util.js?v=2026.11.03.3"></script>
-  <script src="js/net.js?v=2026.11.03.3"></script>
-  <script src="js/face.js?v=2026.11.03.3"></script>
-  <script src="js/controller.js?v=2026.11.03.3"></script>
+  <script src="js/util.js?v=2026.11.03.4"></script>
+  <script src="js/net.js?v=2026.11.03.4"></script>
+  <script src="js/face.js?v=2026.11.03.4"></script>
+  <script src="js/controller.js?v=2026.11.03.4"></script>
 </body>
 </html>

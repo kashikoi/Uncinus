@@ -3,6 +3,10 @@
   "use strict";
 
   const FACE_SIZE = 96; // px, square JPEG drawn on top of the player's block
+  // The phone crops the square framing the guide oval: 84% of the square camera view, centred. Inside that
+  // crop the oval spans the full height and 31/42 of it across; everything outside it is cut away when shown.
+  const FACE_CROP = 0.84;
+  const FACE_OVAL = { rx: 31 / 84, ry: 42 / 84 }; // radii as fractions of the photo's side
   const FACE_MAX = 16000; // max data-URL length accepted by the host
   const FACE_CHUNK = 1500; // data-URL characters per relay message
   const MAX_CHUNKS = Math.ceil(FACE_MAX / FACE_CHUNK);
@@ -53,7 +57,7 @@
     };
   }
 
-  const api = { FACE_SIZE, FACE_MAX, FACE_CHUNK, isFaceDataUrl, chunkFace, createFaceAssembler };
+  const api = { FACE_SIZE, FACE_CROP, FACE_OVAL, FACE_MAX, FACE_CHUNK, isFaceDataUrl, chunkFace, createFaceAssembler };
   root.Uncinus = root.Uncinus || {};
   root.Uncinus.face = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;

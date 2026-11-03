@@ -5,6 +5,7 @@
   const U = root.Uncinus;
   const M = U.match;
   const { W, H, PITCH, CX, CY, GOAL_HALF, GOAL_DEPTH, POST_R, HALF, BALL_R, TEAMS } = M;
+  const { FACE_OVAL } = U.face;
   const APRON = 30;
 
   const PALETTES = {
@@ -357,26 +358,26 @@
       ctx.restore();
     }
 
-    // The player's photo fills the top face inside a team-colour frame, with the number as a corner badge.
+    // The player's photo, cut to the face-guide oval and as big as the block allows, with the number as a badge.
     drawFace(ctx, p, team, img) {
-      const inset = 4;
+      const side = HALF / FACE_OVAL.ry;
       ctx.save();
       ctx.beginPath();
-      ctx.roundRect(p.x - HALF + inset, p.y - HALF + inset, (HALF - inset) * 2, (HALF - inset) * 2, 5);
+      ctx.ellipse(p.x, p.y, side * FACE_OVAL.rx, side * FACE_OVAL.ry, 0, 0, Math.PI * 2);
       ctx.clip();
-      ctx.drawImage(img, p.x - HALF + inset, p.y - HALF + inset, (HALF - inset) * 2, (HALF - inset) * 2);
+      ctx.drawImage(img, p.x - side / 2, p.y - side / 2, side, side);
       ctx.restore();
-      const bx = p.x + HALF - 5;
-      const by = p.y + HALF - 5;
+      const bx = p.x + HALF - 2;
+      const by = p.y + HALF - 2;
       ctx.fillStyle = team.dark;
       ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(bx, by, 9.5, 0, Math.PI * 2);
+      ctx.arc(bx, by, 8.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = "#ffffff";
-      ctx.font = "800 12px Inter, system-ui, -apple-system, sans-serif";
+      ctx.font = "800 11px Inter, system-ui, -apple-system, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(String(p.number), bx, by + 1);

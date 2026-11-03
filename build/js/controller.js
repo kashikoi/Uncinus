@@ -6,8 +6,6 @@
   const { util, face: F } = V;
   const NAME_KEY = "uncinus_name";
   const FACE_KEY = "uncinus_face";
-  // Square crop of the camera view that frames the guide oval (it is 84% of the view tall).
-  const FACE_CROP = 0.84;
   const ID_KEY = "uncinus_player_id";
   const SEND_EVERY_MS = 50;
   const TILT_RANGE_DEG = 22;
@@ -198,7 +196,10 @@
     el.faceBtn.textContent = state.face ? "Retake" : "Take selfie";
     el.faceClear.hidden = !state.face;
     el.faceHint.textContent = state.face ? "You'll play with this face" : "Optional — play as yourself";
-    el.meSwatch.style.backgroundImage = state.face ? `url("${state.face}")` : "";
+    // Team colour outside the oval, the photo inside it.
+    el.meSwatch.style.backgroundImage = state.face
+      ? `radial-gradient(36.9% 50% at center, transparent 96%, var(--me, #64748b) 100%), url("${state.face}")`
+      : "";
     el.meSwatch.classList.toggle("has-face", Boolean(state.face));
   }
 
@@ -256,7 +257,7 @@
   function snap() {
     const v = el.camVideo;
     if (!v.videoWidth) return;
-    const side = Math.min(v.videoWidth, v.videoHeight) * FACE_CROP;
+    const side = Math.min(v.videoWidth, v.videoHeight) * F.FACE_CROP;
     const sx = (v.videoWidth - side) / 2;
     const sy = (v.videoHeight - side) / 2;
     const canvas = document.createElement("canvas");

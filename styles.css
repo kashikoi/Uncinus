@@ -1067,12 +1067,18 @@ body.pad {
 }
 
 /* ---------- Face photos ---------- */
+/* Photos are cut to the face-guide oval wherever they're shown (FACE_OVAL in js/face.js). */
+.chip__face,
+.face-thumb img,
+.cam__view img {
+  clip-path: ellipse(36.9% 50%);
+}
+
 .chip__face {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
+  width: 26px;
+  height: 26px;
   object-fit: cover;
-  margin-left: -2px;
+  margin: -2px -4px;
 }
 
 button.me__swatch {
@@ -1085,6 +1091,7 @@ button.me__swatch {
 .me__swatch.has-face {
   background-size: cover;
   background-position: center;
+  background-color: var(--me, #64748b);
   box-shadow: 0 0 0 3px var(--me, rgba(255, 255, 255, 0.35));
 }
 
@@ -1127,6 +1134,7 @@ button.me__swatch {
 .face-thumb:has(img:not([hidden])) {
   border-style: solid;
   border-color: var(--accent);
+  background: var(--accent);
 }
 
 .face-pick__text {
@@ -1197,7 +1205,7 @@ button.me__swatch {
 }
 
 .cam__mask > path:first-child {
-  fill: rgba(2, 6, 23, 0.62);
+  fill: rgba(2, 6, 23, 0.8);
 }
 
 .cam__oval {
