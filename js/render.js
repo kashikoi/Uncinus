@@ -6,6 +6,8 @@
   const M = U.match;
   const { W, H, PITCH, CX, CY, GOAL_HALF, GOAL_DEPTH, POST_R, HALF, BALL_R, TEAMS } = M;
   const { FACE_OVAL } = U.face;
+  // The frame of a face player: the same outline as a block's "Kick ready" ring (block + 9 px lift + 4 px margin).
+  const FRAME = { half: HALF + 4, top: HALF + 4, bottom: HALF + 13 };
   const APRON = 30;
 
   const PALETTES = {
@@ -150,7 +152,11 @@
 
       const players = [...m.players.values()].sort((a, b) => a.y - b.y);
       this.updateTrails(players, dt);
-      for (const p of players) this.drawShadow(ctx, pal, p.x, p.y + HALF + 6, HALF * 1.25, 9, p.connected ? 1 : 0.4);
+      for (const p of players) {
+        // Face players are see-through inside their frame, so their shadow sits just below it.
+        if (this.faceOf(p)) this.drawShadow(ctx, pal, p.x, p.y + FRAME.bottom + 4, HALF * 1.1, 6, p.connected ? 0.8 : 0.3);
+        else this.drawShadow(ctx, pal, p.x, p.y + HALF + 6, HALF * 1.25, 9, p.connected ? 1 : 0.4);
+      }
       this.drawShadow(ctx, pal, m.ball.x + 5, m.ball.y + BALL_R * 0.8, BALL_R * 1.05, 5, 1);
       this.drawTrails(ctx, players);
       for (const p of players) this.drawPlayer(ctx, p);
@@ -323,8 +329,18 @@
       ctx.globalAlpha = 1;
     }
 
+    faceOf(p) {
+      const face = this.faces && this.faces.get(p.id);
+      return face && face.img.complete && face.img.naturalWidth ? face.img : null;
+    }
+
     drawPlayer(ctx, p) {
       const team = TEAMS[p.team];
+      const img = this.faceOf(p);
+      if (img) {
+        this.drawFacePlayer(ctx, p, team, img);
+        return;
+      }
       const lift = 9;
       ctx.save();
       ctx.globalAlpha = p.connected ? 1 : 0.4;
@@ -345,9 +361,7 @@
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      const face = this.faces && this.faces.get(p.id);
-      if (face && face.img.complete && face.img.naturalWidth) this.drawFace(ctx, p, team, face.img);
-      else this.drawEyes(ctx, p);
+      this.drawEyes(ctx, p);
       if (p.cooldown <= 0 && p.connected) {
         ctx.strokeStyle = "rgba(255,255,255,0.55)";
         ctx.lineWidth = 2;
@@ -358,29 +372,30 @@
       ctx.restore();
     }
 
-    // The player's photo, cut to the face-guide oval and as big as the block allows, with the number as a badge.
-    drawFace(ctx, p, team, img) {
-      const side = HALF / FACE_OVAL.ry;
+    // A face player is just a team-colour frame (bright when Kick is ready) around their photo, cut to the
+    // face-guide oval and as big as the frame allows; inside the frame is see-through.
+    drawFacePlayer(ctx, p, team, img) {
+      const line = 3.5;
+      const top = p.y - FRAME.top;
+      const height = FRAME.top + FRAME.bottom;
+      ctx.save();
+      ctx.globalAlpha = p.connected ? 1 : 0.4;
+      const ry = height / 2 - line;
+      const side = ry / FACE_OVAL.ry;
+      const cy = top + height / 2;
       ctx.save();
       ctx.beginPath();
-      ctx.ellipse(p.x, p.y, side * FACE_OVAL.rx, side * FACE_OVAL.ry, 0, 0, Math.PI * 2);
+      ctx.ellipse(p.x, cy, side * FACE_OVAL.rx, ry, 0, 0, Math.PI * 2);
       ctx.clip();
-      ctx.drawImage(img, p.x - side / 2, p.y - side / 2, side, side);
+      ctx.drawImage(img, p.x - side / 2, cy - side / 2, side, side);
       ctx.restore();
-      const bx = p.x + HALF - 2;
-      const by = p.y + HALF - 2;
-      ctx.fillStyle = team.dark;
-      ctx.strokeStyle = "#ffffff";
-      ctx.lineWidth = 2;
+      if (p.cooldown > 0 || !p.connected) ctx.globalAlpha *= 0.45;
+      ctx.strokeStyle = team.color;
+      ctx.lineWidth = line;
       ctx.beginPath();
-      ctx.arc(bx, by, 8.5, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.roundRect(p.x - FRAME.half, top, FRAME.half * 2, height, 10);
       ctx.stroke();
-      ctx.fillStyle = "#ffffff";
-      ctx.font = "800 11px Inter, system-ui, -apple-system, sans-serif";
-      ctx.textAlign = "center";
-      ctx.textBaseline = "middle";
-      ctx.fillText(String(p.number), bx, by + 1);
+      ctx.restore();
     }
 
     // Number, then two eyes looking where the player is heading.

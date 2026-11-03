@@ -20,6 +20,8 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
   camera view), mirrors it, saves a 96 px JPEG data URL in `uncinus_face`, and sends it as `{t:"face", s, i, n, d}`
   chunks (relay caps phone messages at 2 KB; `n: 0` clears) after every `you`, so a reloaded host gets it again.
   Host validates with `isFaceDataUrl` (jpeg/png/webp base64 only, ≤ `FACE_MAX`) before drawing or putting it in the roster.
+  A face player renders as only a team-colour frame (`FRAME`, faded during kick cooldown) around the oval-cut face,
+  transparent inside — no block body or number badge (owner wants the face to be the player).
 - Kick is a **press counter** `k` (not a held bool) so taps between network ticks aren't lost; the first `k` seen
   only syncs. `kick()` = dash impulse + `KICK_COOLDOWN`; touching the ball during a dash adds `KICK_POWER` once.
 - Players are AABB blocks (`HALF`) vs a circle ball; player–player is circle push + velocity exchange. The ball is

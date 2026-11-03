@@ -15,7 +15,8 @@ input to the big screen in real time. It shares its pairing, QR and relay code w
 1. Open **https://kashikoi.github.io/Uncinus/** on the Mac (full screen with the ⤢ button).
 2. Scan the QR code with each phone — or open `kashikoi.github.io/Uncinus/play.html` and type the 4-letter room code.
    Optionally tap **Take selfie**: the front camera opens with an oval face guide, and your face, cut to the oval to
-   drop the background, fills your block on the big screen. The photo is remembered on your phone; tap your
+   drop the background, becomes your player on the big screen: just your face inside a team-colour frame that
+   glows when Kick is ready. The photo is remembered on your phone; tap your
    swatch during a match to retake it.
 3. Players are dealt onto **Sky** (blue, attacks →) and **Ember** (orange, attacks ←) to keep the teams even.
 4. **Drag** anywhere on the pad to run (or tap **Tilt**), and tap **Kick** to dash — dash into the ball to boot it.

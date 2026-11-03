@@ -2,7 +2,7 @@
 (function (root) {
   "use strict";
 
-  const APP_VERSION = "2026.11.03.4";
+  const APP_VERSION = "2026.11.03.5";
   const DEFAULT_RELAY = "wss://uncinus-relay.nimbus-sync.workers.dev";
   const RELAY_KEY = "uncinus_relay";
   const THEME_KEY = "uncinus_theme";
