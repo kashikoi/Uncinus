@@ -265,9 +265,11 @@
     b.x += b.vx * dt;
     b.y += b.vy * dt;
     b.spin += (speed / BALL_R) * dt;
+  }
 
+  function constrainBall(b) {
     const inMouth = Math.abs(b.y - CY) < GOAL_HALF;
-    const inGoal = b.x < PITCH.L || b.x > PITCH.R;
+    const inGoal = inMouth && (b.x < PITCH.L || b.x > PITCH.R);
 
     if (inGoal) {
       // Inside the net: back wall and side netting.
@@ -309,9 +311,10 @@
 
   function checkGoal(m) {
     const b = m.ball;
+    if (b.y - BALL_R < CY - GOAL_HALF || b.y + BALL_R > CY + GOAL_HALF) return;
     let team = null;
-    if (b.x + BALL_R < PITCH.L) team = "right";
-    else if (b.x - BALL_R > PITCH.R) team = "left";
+    if (b.x + BALL_R < PITCH.L && b.x - BALL_R >= PITCH.L - GOAL_DEPTH) team = "right";
+    else if (b.x - BALL_R > PITCH.R && b.x + BALL_R <= PITCH.R + GOAL_DEPTH) team = "left";
     if (!team) return;
     m.score[team]++;
     const scorer = b.lastTouch ? m.players.get(b.lastTouch) : null;
@@ -373,6 +376,8 @@
     for (let s = 0; s < sub; s++) {
       stepBall(m, dt / sub);
       if (m.phase === "play") for (const p of list) if (m.players.has(p.id)) collidePlayerBall(m, p);
+      // Player contact can displace the ball through a wall, so constrain it last.
+      constrainBall(m.ball);
     }
 
     if (m.phase === "play") checkGoal(m);

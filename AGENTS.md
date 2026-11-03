@@ -19,7 +19,8 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
 - Kick is a **press counter** `k` (not a held bool) so taps between network ticks aren't lost; the first `k` seen
   only syncs. `kick()` = dash impulse + `KICK_COOLDOWN`; touching the ball during a dash adds `KICK_POWER` once.
 - Players are AABB blocks (`HALF`) vs a circle ball; player–player is circle push + velocity exchange. The ball is
-  substepped to avoid tunnelling; posts are circles. Goal = ball fully past the line inside the mouth; credit uses
+  substepped to avoid tunnelling; constrain walls/net/posts after player–ball contact so shoves cannot escape the pitch.
+  Posts are circles. Goal = ball fully past the line and fully within the net perimeter; credit uses
   `ball.lastTouch` (own goal if the toucher is on the other team). `phase` "goal" lasts `GOAL_PAUSE`, then kickoff.
 - Teams: new players join the smaller team (`left` = Sky, attacks right; `right` = Ember). Kickoff spots fill the
   middle row first. Match emits events (`dash`, `kick`, `goal`, `reset`) drained by the host each frame for fx,

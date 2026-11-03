@@ -18,8 +18,10 @@ input to the big screen in real time. It shares its pairing, QR and relay code w
 4. **Drag** anywhere on the pad to run (or tap **Tilt**), and tap **Kick** to dash — dash into the ball to boot it.
    Kick recharges in under a second. Shoulder-barge opponents freely.
 
-Goals pop confetti on the big screen and flash every phone ("YOU SCORED!" / "Conceded"). Own goals count for the
-other team. After each goal everyone resets to kickoff. Settings has **Reset score** and **New room**.
+Goals count only when the whole ball crosses the goal line inside the net perimeter; pushing against the end wall
+outside the net does not score. Goals pop confetti on the big screen and flash every phone ("YOU SCORED!" /
+"Conceded"). Own goals count for the other team. After each goal everyone resets to kickoff. Settings has
+**Reset score** and **New room**.
 
 No phone handy? Press <kbd>K</kbd> on the Mac to play with the arrow keys / WASD and Space to kick.
 

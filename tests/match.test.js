@@ -79,6 +79,60 @@ test("ball bounces off side walls and the touchlines", () => {
   assert.deepEqual(m.score, { left: 0, right: 0 });
 });
 
+for (const side of [-1, 1]) {
+  for (const y of [M.PITCH.T + 80, M.PITCH.B - 80]) {
+    test(`pushing against the ${side < 0 ? "left" : "right"} end wall at y=${y} cannot score`, () => {
+      const m = M.createMatch();
+      const p = M.addPlayer(m, "aaaaaa", "Ann");
+      const line = side < 0 ? M.PITCH.L : M.PITCH.R;
+      Object.assign(p, { x: line - side * (M.HALF + 40), y });
+      Object.assign(m.ball, { x: line - side * M.BALL_R, y });
+      M.setInput(m, p.id, { x: side, y: 0, k: 0 });
+
+      for (let frame = 0; frame < 360; frame++) {
+        if (frame === 120) M.setInput(m, p.id, { x: side, y: 0, k: 1 });
+        M.step(m, 1 / 120);
+        assert.equal(m.phase, "play", "pushing the wall must not trigger a goal");
+        assert.ok(m.ball.x >= M.PITCH.L + M.BALL_R && m.ball.x <= M.PITCH.R - M.BALL_R,
+          "the ball stays inside the end wall");
+        assert.equal(m.ball.y, y, "the ball must not teleport into the net");
+      }
+      assert.deepEqual(m.score, { left: 0, right: 0 });
+      assert.ok(!M.drainEvents(m).some((e) => e.type === "goal"));
+    });
+  }
+}
+
+for (const side of [-1, 1]) {
+  test(`pushing into the ${side < 0 ? "left" : "right"} net scores only with the whole ball inside`, () => {
+    const m = M.createMatch();
+    const p = M.addPlayer(m, "aaaaaa", "Ann");
+    const line = side < 0 ? M.PITCH.L : M.PITCH.R;
+    Object.assign(p, { x: line - side * (M.HALF + 40), y: M.CY });
+    Object.assign(m.ball, { x: line - side * M.BALL_R, y: M.CY });
+    M.setInput(m, p.id, { x: side, y: 0 });
+
+    for (let frame = 0; frame < 360 && m.phase === "play"; frame++) M.step(m, 1 / 120);
+    assert.equal(m.phase, "goal");
+    assert.deepEqual(m.score, side < 0 ? { left: 0, right: 1 } : { left: 1, right: 0 });
+    const depth = side * (m.ball.x - line);
+    assert.ok(depth > M.BALL_R && depth + M.BALL_R <= M.GOAL_DEPTH);
+    assert.ok(Math.abs(m.ball.y - M.CY) + M.BALL_R <= M.GOAL_HALF);
+    assert.equal(M.drainEvents(m).filter((e) => e.type === "goal").length, 1);
+  });
+
+  test(`the whole ball must cross the ${side < 0 ? "left" : "right"} goal line`, () => {
+    const m = M.createMatch();
+    const line = side < 0 ? M.PITCH.L : M.PITCH.R;
+    m.ball.x = line + side * (M.BALL_R - 1);
+    M.step(m, 1 / 120);
+    assert.equal(m.phase, "play", "part of the ball is still on the pitch");
+    m.ball.x = line + side * (M.BALL_R + 1);
+    M.step(m, 1 / 120);
+    assert.equal(m.phase, "goal");
+  });
+}
+
 test("a shot into the right goal scores for left, then kickoff resets", () => {
   const m = M.createMatch();
   const p = M.addPlayer(m, "aaaaaa", "Ann");
