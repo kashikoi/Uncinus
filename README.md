@@ -21,7 +21,8 @@ input to the big screen in real time. It shares its pairing, QR and relay code w
    glows when Kick is ready. The photo is remembered on your phone; tap your
    swatch during a match to retake it.
 3. Players are dealt onto the **blue** team (attacks →) or the **orange** team (attacks ←) to keep the teams even —
-   or, with **Settings → Players pick their team**, each new player picks a colour on their phone. Teams have no
+   or, with **Settings → Players pick their team**, each player picks a colour on their phone when they join, and
+   can tap the Defend/Score bar to switch later. Teams have no
    names in the game; colour is enough.
 4. **Drag** anywhere on the pad to run (or tap **Tilt**), and tap **Kick** to dash — dash into the ball to boot it.
    Kick recharges in under a second. Shoulder-barge opponents freely.

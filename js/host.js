@@ -71,7 +71,6 @@
   }
 
   function greet(id, name) {
-    const isNew = !state.match.players.has(id);
     const p = M.addPlayer(state.match, id, name);
     if (!p) {
       sendTo(id, { t: "full" });
@@ -79,13 +78,16 @@
     }
     sendYou(p);
     sendTo(id, { t: "score", ...state.match.score });
-    if (state.teamPick && isNew) sendTo(id, { t: "pick", counts: teamCounts() });
     if (id !== KEYBOARD_ID && state.joinOpen && realPlayers().length === 1) setJoinOpen(false);
   }
 
   function sendYou(p) {
     const team = M.TEAMS[p.team];
-    sendTo(p.id, { t: "you", name: p.name, team: p.team, teamName: team.name, color: team.color, number: p.number });
+    // `pick` tells the phone it may choose its colour; it asks once per join and lets players switch later.
+    sendTo(p.id, {
+      t: "you", name: p.name, team: p.team, teamName: team.name, color: team.color, number: p.number,
+      pick: state.teamPick, counts: teamCounts(),
+    });
   }
 
   function teamCounts() {
@@ -196,8 +198,10 @@
     } catch {
       // Not persisted; still applies for this session.
     }
-    if (key === TEAM_PICK_KEY) state.teamPick = on;
-    else {
+    if (key === TEAM_PICK_KEY) {
+      state.teamPick = on;
+      for (const p of realPlayers()) sendYou(p);
+    } else {
       M.setMayhem(state.match, on);
       if (!on) el.starToast.hidden = true;
     }

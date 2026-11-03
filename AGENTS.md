@@ -33,8 +33,10 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
 - Teams: new players join the smaller team (`left` = Sky, attacks right; `right` = Ember). Kickoff spots fill the
   middle row first. Match emits events (`dash`, `kick`, `goal`, `reset`) drained by the host each frame for fx,
   banners and phone messages.
-- Rules (host Settings, saved in `uncinus_team_pick` / `uncinus_mayhem`): team pick → host sends new players
-  `pick{counts}`, phone answers `{t:"team", team}`, host calls `M.setTeam` and re-sends `you`. Mayhem → `M.setMayhem`;
+- Rules (host Settings, saved in `uncinus_team_pick` / `uncinus_mayhem`): team pick → every `you` carries `pick` +
+  `counts`; the phone shows the picker once per `join()` (not on reconnect blips) and lets players re-open it by
+  tapping the attack bar; it answers `{t:"team", team}`, host calls `M.setTeam` and re-sends `you`. Toggling the
+  rule re-sends `you` to everyone. Mayhem → `M.setMayhem`;
   the star (`m.star`, spawned every `STAR_GAP_MIN..MAX` s using `m.rand`, only while nobody is powered) gives
   `p.star = STAR_POWER`: star players skip player–player collision entirely (ghosts), and while `m.powered` only
   they collide with the ball. Events `star-spawn/get/gone/end`; host→player `star{on}`. The mushroom (`m.shroom`,
@@ -47,8 +49,8 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
   point the attack direction; phones show the `attack-bar` (Defend / Score). Teams have no displayed names — colour
   only (`team-chip`); `TEAMS[].name` ("Blue"/"Orange") is just for aria labels and the `you.teamName` field.
 - Relay: one Durable Object per room code, max 12 players, `bye` before every server close (4001/4004/4009/4400).
-- Protocol: host→player `you{name,team,teamName,color,number}`, `score{left,right}`, `goal{team,scorerId,
-  scorerName,ownGoal,score}`, `pick{counts}`, `star{on,secs}`, `big{on,secs}`, `flower{on,secs,points}`, `full`; `goal` also has `points`; relay→player `welcome`, `host-left`, `host-back`.
+- Protocol: host→player `you{name,team,teamName,color,number,pick,counts}`, `score{left,right}`, `goal{team,scorerId,
+  scorerName,ownGoal,score}`, `star{on,secs}`, `big{on,secs}`, `flower{on,secs,points}`, `full`; `goal` also has `points`; relay→player `welcome`, `host-left`, `host-back`.
 - `[hidden] { display:none !important }` is required.
 
 ## Testing

@@ -1520,3 +1520,21 @@ body.is-flower .me {
     filter: brightness(1.2);
   }
 }
+
+.attack-bar[data-can-pick] {
+  cursor: pointer;
+}
+
+.attack-bar[data-can-pick] .attack-bar__arrow {
+  grid-template-rows: auto auto;
+  align-content: center;
+  gap: 1px;
+}
+
+.attack-bar[data-can-pick] .attack-bar__arrow::after {
+  content: "tap to switch colour";
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--ink-soft);
+  letter-spacing: 0;
+}

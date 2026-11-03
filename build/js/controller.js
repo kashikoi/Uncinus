@@ -30,6 +30,9 @@
     sendTimer: null,
     face: null,
     faceSeq: 0,
+    picked: false,
+    canPick: false,
+    counts: {},
     cam: null,
   };
 
@@ -59,6 +62,7 @@
 
   function join(room, name) {
     state.room = room;
+    state.picked = false;
     state.name = name;
     state.id = playerId();
     localStorage.setItem(NAME_KEY, name);
@@ -103,14 +107,16 @@
         el.meColor.textContent = `#${msg.number}`;
         state.attack = msg.team === "left" ? "you attack →" : "← you attack";
         renderAttack(msg.team);
+        state.canPick = Boolean(msg.pick);
+        state.counts = msg.counts || {};
+        el.attackBar.toggleAttribute("data-can-pick", state.canPick);
+        if (!state.canPick) el.teamPick.hidden = true;
+        else if (!state.picked) showTeamPick(state.counts);
         renderTilt();
         document.documentElement.style.setProperty("--me", msg.color);
         break;
       case "score":
         renderScore(msg);
-        break;
-      case "pick":
-        showTeamPick(msg.counts || {});
         break;
       case "star":
         setStar(Boolean(msg.on));
@@ -519,9 +525,18 @@
 
     el.teamPick.addEventListener("click", (ev) => {
       const opt = ev.target.closest("[data-team]");
-      if (!opt || !state.link) return;
+      if (!opt) {
+        // Tapping outside the card dismisses it once a colour has been chosen.
+        if (state.picked && !ev.target.closest(".team-pick")) el.teamPick.hidden = true;
+        return;
+      }
+      if (!state.link) return;
       state.link.send({ t: "team", team: opt.dataset.team });
+      state.picked = true;
       el.teamPick.hidden = true;
+    });
+    el.attackBar.addEventListener("click", () => {
+      if (state.canPick) showTeamPick(state.counts);
     });
 
     el.faceBtn.addEventListener("click", openCamera);
