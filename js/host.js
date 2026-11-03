@@ -8,6 +8,9 @@
   const KEYBOARD_ID = "keyboard";
   const TEAM_PICK_KEY = "uncinus_team_pick";
   const MAYHEM_KEY = "uncinus_mayhem";
+  const LENGTH_KEY = "uncinus_length";
+  const DEFAULT_LENGTH = 10;
+  const PERIOD_LABEL = { pre: "Waiting for players", first: "1st half", halftime: "Halftime", second: "2nd half", full: "Full time" };
 
   const el = {};
   const state = {
@@ -25,6 +28,7 @@
     wakeLock: null,
     bannerTimer: null,
     starTimer: null,
+    clockShown: "",
     teamPick: false,
   };
 
@@ -84,10 +88,13 @@
   function sendYou(p) {
     const team = M.TEAMS[p.team];
     // `pick` tells the phone it may choose its colour; it asks once per join and lets players switch later.
+    // `sides` says which end each colour defends right now (they swap at halftime).
     sendTo(p.id, {
       t: "you", name: p.name, team: p.team, teamName: team.name, color: team.color, number: p.number,
       pick: state.teamPick, counts: teamCounts(),
+      sides: { left: M.defends(state.match, "left"), right: M.defends(state.match, "right") },
     });
+    sendTo(p.id, periodMessage());
   }
 
   function teamCounts() {
@@ -157,6 +164,8 @@
       } else if (ev.type === "reset") {
         renderScore();
         broadcast({ t: "score", ...state.match.score });
+      } else if (ev.type === "period") {
+        onPeriod(ev);
       } else if (ev.type === "star-spawn") {
         showStarToast("⭐ A star appeared — grab it!");
       } else if (ev.type === "star-get") {
@@ -180,6 +189,94 @@
         sendTo(ev.id, { t: "flower", on: false });
       }
     }
+  }
+
+  function periodMessage() {
+    const m = state.match;
+    return { t: "period", period: m.period, clock: Math.ceil(m.clock), score: { ...m.score } };
+  }
+
+  const fmtClock = (s) => `${Math.floor(Math.ceil(s) / 60)}:${String(Math.ceil(s) % 60).padStart(2, "0")}`;
+
+  function onPeriod(ev) {
+    renderScore();
+    // Ends can change (halftime swap, or back to normal for a new game): refresh every phone's sides before
+    // announcing the period, so "you now attack ←" is right.
+    if (ev.period !== "halftime" && ev.period !== "full") for (const p of realPlayers()) sendYou(p);
+    broadcast(periodMessage());
+    const { period, score } = ev;
+    if (period === "first") {
+      el.periodBanner.hidden = true;
+      showStarToast("⚽ Kick off — 1st half!");
+    } else if (period === "second") {
+      el.periodBanner.hidden = true;
+      showStarToast("🔄 2nd half — teams swapped ends!");
+    } else if (period === "halftime") {
+      showPeriodBanner("HALFTIME", "💃 Dance break! Teams swap ends for the 2nd half.", "#fde047");
+    } else if (period === "full") {
+      const winner = score.left === score.right ? null : score.left > score.right ? "left" : "right";
+      showPeriodBanner(
+        "FULL TIME",
+        winner ? `<span class="team-chip team-chip--${winner}"></span> wins ${Math.max(score.left, score.right)}–${Math.min(score.left, score.right)}!` : `It's a draw, ${score.left}–${score.right}`,
+        winner ? M.TEAMS[winner].color : "#ffffff",
+        true,
+      );
+    } else {
+      el.periodBanner.hidden = true;
+    }
+    renderClock(true);
+  }
+
+  // `subHtml` is only ever built from our own markup and numbers.
+  function showPeriodBanner(word, sub, color, isHtml) {
+    el.periodBanner.style.setProperty("--accent-color", color);
+    el.periodWord.textContent = word;
+    if (isHtml) el.periodSub.innerHTML = sub;
+    else el.periodSub.textContent = sub;
+    el.periodBanner.hidden = false;
+    el.periodBanner.classList.remove("is-in");
+    void el.periodBanner.offsetWidth;
+    el.periodBanner.classList.add("is-in");
+  }
+
+  // Update the clock pill (and tell phones) once per displayed second.
+  function renderClock(force) {
+    const m = state.match;
+    const timed = m.period !== "free";
+    const text = !timed ? "" : m.period === "pre" ? PERIOD_LABEL.pre : `${PERIOD_LABEL[m.period]} · ${fmtClock(m.clock)}`;
+    if (text === state.clockShown && !force) return;
+    state.clockShown = text;
+    el.matchClock.hidden = !timed;
+    el.matchClock.textContent = text;
+    el.matchClock.classList.toggle("is-low", (m.period === "first" || m.period === "second") && m.clock <= 30);
+    if (m.period === "halftime") el.periodCount.textContent = `2nd half in ${fmtClock(m.clock)}`;
+    else if (m.period === "full") el.periodCount.textContent = `Next game in ${fmtClock(m.clock)}`;
+    if (timed && !force) broadcast({ t: "clock", period: m.period, clock: Math.ceil(m.clock) });
+  }
+
+  function setLength(minutes) {
+    try {
+      localStorage.setItem(LENGTH_KEY, String(minutes));
+    } catch {
+      // Not persisted; still applies for this session.
+    }
+    M.setGameLength(state.match, minutes);
+    el.goalBanner.hidden = true;
+    updateLengthPicker();
+  }
+
+  function savedLength() {
+    try {
+      const v = localStorage.getItem(LENGTH_KEY);
+      return v === null ? DEFAULT_LENGTH : Number(v);
+    } catch {
+      return DEFAULT_LENGTH;
+    }
+  }
+
+  function updateLengthPicker() {
+    const minutes = state.match.length / 60;
+    el.lengthPicker.querySelectorAll(".theme-chip").forEach((c) => c.classList.toggle("is-active", Number(c.dataset.length) === minutes));
   }
 
   function showStarToast(text) {
@@ -343,6 +440,7 @@
 
   function openSettings() {
     updateThemePicker();
+    updateLengthPicker();
     el.teamPickToggle.checked = state.teamPick;
     el.mayhemToggle.checked = state.match.mayhem;
     el.relayInput.value = state.relay;
@@ -390,6 +488,7 @@
       remaining -= h;
     }
     handleEvents();
+    renderClock();
     if (state.match.players.size !== before) renderRoster();
     state.renderer.render(state.match, dt);
     requestAnimationFrame(frame);
@@ -400,7 +499,8 @@
       "pitch", "status", "statusText", "kbBtn", "fsBtn", "settingsBtn", "joinCard", "joinMini", "joinClose", "qr", "miniQr",
       "roomCode", "miniRoom", "joinUrl", "joinLink", "emptyHint", "banner", "bannerText", "bannerBtn", "settings",
       "themePicker", "relayInput", "relaySave", "relayReset", "relayError", "newRoomBtn", "resetBtn", "version", "appVersion", "settingsClose",
-      "scoreLeft", "scoreRight", "goalBanner", "goalWho", "teamPickToggle", "mayhemToggle", "starToast", "goalWord",
+      "scoreLeft", "scoreRight", "goalBanner", "goalWho", "teamPickToggle", "mayhemToggle", "starToast", "goalWord", "matchClock", "periodBanner",
+      "periodWord", "periodSub", "periodCount", "lengthPicker",
     ].forEach((id) => (el[id] = $(id)));
     el.roster_left = $("rosterLeft");
     el.roster_right = $("rosterRight");
@@ -439,6 +539,10 @@
       el.goalBanner.hidden = true;
       el.settings.close();
     });
+    el.lengthPicker.addEventListener("click", (ev) => {
+      const chip = ev.target.closest("[data-length]");
+      if (chip) setLength(Number(chip.dataset.length));
+    });
 
     const GAME_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "KeyW", "KeyA", "KeyS", "KeyD", "Space"]);
     window.addEventListener("keydown", (ev) => {
@@ -462,6 +566,7 @@
     state.renderer = new U.Renderer(el.pitch);
     state.renderer.faces = state.faces;
     loadRules();
+    M.setGameLength(state.match, savedLength());
     state.renderer.setTheme(util.applyTheme());
     startRoom(new URLSearchParams(location.search).get("room") || sessionStorage.getItem(ROOM_KEY));
     setJoinOpen(true);

@@ -48,8 +48,15 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
 - Team sides must stay obvious (players got confused): goals/end lines use the defending team's colour, chevrons
   point the attack direction; phones show the `attack-bar` (Defend / Score). Teams have no displayed names — colour
   only (`team-chip`); `TEAMS[].name` ("Blue"/"Orange") is just for aria labels and the `you.teamName` field.
+- Timed games (`uncinus_length`, default 10, 0 = no limit): `m.period` free | pre | first | halftime | second | full,
+  `m.clock` counts down (paused during goal celebrations). `pre` waits for the first player. Halftime = `HALFTIME`
+  s of `dance()` (players orbit the centre, no physics/goals/power-ups), then `m.swapped` flips ends. Full time
+  shows `FULLTIME_SHOW` s then `resetMatch` (new game). Ends are never hard-coded: use `M.defends(m, team)` /
+  `M.teamAt(m, end)` (goals, formation, renderer colours). Events `period{period,clock,score}`; host→player
+  `period{…}`, `clock{period,clock}` once per second, and `you.sides` (end each colour defends) is re-sent before
+  each period message so phones never show a stale direction.
 - Relay: one Durable Object per room code, max 12 players, `bye` before every server close (4001/4004/4009/4400).
-- Protocol: host→player `you{name,team,teamName,color,number,pick,counts}`, `score{left,right}`, `goal{team,scorerId,
+- Protocol: host→player `you{name,team,teamName,color,number,pick,counts,sides}`, `period`, `clock`, `score{left,right}`, `goal{team,scorerId,
   scorerName,ownGoal,score}`, `star{on,secs}`, `big{on,secs}`, `flower{on,secs,points}`, `full`; `goal` also has `points`; relay→player `welcome`, `host-left`, `host-back`.
 - `[hidden] { display:none !important }` is required.
 

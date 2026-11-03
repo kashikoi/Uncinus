@@ -7,12 +7,12 @@
   <meta name="theme-color" content="#0f172a" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.11.03.11" />
-  <link rel="apple-touch-icon" href="icon.svg?v=2026.11.03.11" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.11.03.12" />
+  <link rel="apple-touch-icon" href="icon.svg?v=2026.11.03.12" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=2026.11.03.11" />
+  <link rel="stylesheet" href="styles.css?v=2026.11.03.12" />
   <script>
     (function () {
       try {
@@ -73,7 +73,7 @@
         <div>
           <div class="me__name" id="meName">Player</div>
           <div class="me__sub"><span id="meColor">Joining</span> · room <span class="mono" id="meRoom"></span></div>
-          <div class="mini-score" id="miniScore"><span class="team-chip team-chip--small team-chip--left" role="img" aria-label="Blue"></span> <b id="scoreLeft">0</b> – <b id="scoreRight">0</b> <span class="team-chip team-chip--small team-chip--right" role="img" aria-label="Orange"></span></div>
+          <div class="mini-score" id="miniScore"><span class="team-chip team-chip--small team-chip--left" role="img" aria-label="Blue"></span> <b id="scoreLeft">0</b> – <b id="scoreRight">0</b> <span class="team-chip team-chip--small team-chip--right" role="img" aria-label="Orange"></span> <span class="me__clock" id="meClock" hidden></span></div>
         </div>
       </div>
       <div class="status status--compact" id="status" data-state="connecting"><span class="status__dot"></span></div>
@@ -111,10 +111,16 @@
       <div class="overlay__card glass team-pick">
         <p>Pick your colour</p>
         <div class="team-pick__opts">
-          <button type="button" class="team-opt team-opt--left" data-team="left" aria-label="Blue team, attacks right"><b>→</b><small>attacks right</small><small id="pickLeft"></small></button>
-          <button type="button" class="team-opt team-opt--right" data-team="right" aria-label="Orange team, attacks left"><b>←</b><small>attacks left</small><small id="pickRight"></small></button>
+          <button type="button" class="team-opt team-opt--left" data-team="left" aria-label="Blue team"><b id="pickLeftDir">→</b><small id="pickLeftText">attacks right</small><small id="pickLeft"></small></button>
+          <button type="button" class="team-opt team-opt--right" data-team="right" aria-label="Orange team"><b id="pickRightDir">←</b><small id="pickRightText">attacks left</small><small id="pickRight"></small></button>
         </div>
       </div>
+    </div>
+
+    <div class="period-screen" id="periodScreen" hidden>
+      <div class="period-screen__title" id="periodTitle"></div>
+      <div class="period-screen__sub" id="periodSubtext"></div>
+      <div class="period-screen__count" id="periodCount"></div>
     </div>
 
     <div class="overlay" id="overlay" hidden>
@@ -146,9 +152,9 @@
     </div>
   </div>
 
-  <script src="js/util.js?v=2026.11.03.11"></script>
-  <script src="js/net.js?v=2026.11.03.11"></script>
-  <script src="js/face.js?v=2026.11.03.11"></script>
-  <script src="js/controller.js?v=2026.11.03.11"></script>
+  <script src="js/util.js?v=2026.11.03.12"></script>
+  <script src="js/net.js?v=2026.11.03.12"></script>
+  <script src="js/face.js?v=2026.11.03.12"></script>
+  <script src="js/controller.js?v=2026.11.03.12"></script>
 </body>
 </html>

@@ -56,6 +56,14 @@
   };
   const GROW_RATE = 6; // how fast size eases toward its target (1/s)
 
+  // Timed games: two halves counting down, a dance-party halftime (teams then swap ends), and a full-time
+  // result before the next game starts by itself. Length 0 = no limit (endless play, no clock).
+  const GAME_LENGTHS = [0, 5, 10, 15, 30]; // minutes
+  const HALFTIME = 60; // seconds
+  const FULLTIME_SHOW = 20; // seconds the result stays up
+  const DANCE_RADIUS = 230;
+  const DANCE_SPEED = 0.45; // radians per second around the centre circle
+
   const GOAL_PAUSE = 2.6;
   const DISCONNECT_GRACE = 20;
   const MAX_PLAYERS = 12;
@@ -66,6 +74,11 @@
   };
 
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  // Which end ("left"/"right") a team defends right now, and which team defends an end.
+  const defends = (m, team) => ((team === "left") !== Boolean(m && m.swapped) ? "left" : "right");
+  const teamAt = (m, end) => (defends(m, "left") === end ? "left" : "right");
+  const kickoffFacing = (m, team) => (defends(m, team) === "left" ? 0 : Math.PI);
+  const playing = (m) => m.period === "free" || m.period === "first" || m.period === "second";
   const half = (p) => HALF * (p.scale || 1);
   const mass = (p) => (p.scale || 1) ** 2;
 
@@ -80,6 +93,11 @@
       t: 0,
       phase: "play",
       phaseTime: 0,
+      length: 0, // seconds for the whole game; 0 = no limit
+      period: "free", // free | pre | first | halftime | second | full
+      clock: 0, // seconds left in the current period
+      swapped: false, // teams swap ends at halftime
+      danceAngle: 0,
       score: { left: 0, right: 0 },
       players: new Map(),
       ball: { x: CX, y: CY, vx: 0, vy: 0, spin: 0, lastTouch: null },
@@ -103,12 +121,12 @@
     return c;
   }
 
-  // Kickoff spots: a loose 3-wide grid on each player's own half.
-  function formationSpot(team, index) {
+  // Kickoff spots: a loose 3-wide grid on the half a team defends.
+  function formationSpot(team, index, swapped = false) {
     const col = Math.floor(index / 3);
     const row = [1, 0, 2][index % 3]; // middle first, then the wings
     const depth = 150 + col * 150;
-    const x = team === "left" ? CX - depth : CX + depth;
+    const x = defends({ swapped }, team) === "left" ? CX - depth : CX + depth;
     const y = CY + (row - 1) * 190 + (col % 2 ? 95 : 0) * (row === 1 ? 0 : 1);
     return { x: clamp(x, PITCH.L + HALF + 10, PITCH.R - HALF - 10), y: clamp(y, PITCH.T + HALF + 10, PITCH.B - HALF - 10) };
   }
@@ -125,7 +143,7 @@
     const counts = teamCounts(m);
     const team = counts.left <= counts.right ? "left" : "right";
     const index = counts[team];
-    const spot = formationSpot(team, index);
+    const spot = formationSpot(team, index, m.swapped);
     const player = {
       id,
       name: name || "Player",
@@ -135,7 +153,7 @@
       y: spot.y,
       vx: 0,
       vy: 0,
-      facing: team === "left" ? 0 : Math.PI,
+      facing: kickoffFacing(m, team),
       input: { x: 0, y: 0 },
       kickSeen: null,
       dash: 0,
@@ -160,8 +178,8 @@
     if (p.team === team) return p;
     p.team = team;
     p.number = m.nextNumber[team]++;
-    const spot = formationSpot(team, teamCounts(m)[team] - 1);
-    Object.assign(p, { x: spot.x, y: spot.y, vx: 0, vy: 0, dash: 0, facing: team === "left" ? 0 : Math.PI });
+    const spot = formationSpot(team, teamCounts(m)[team] - 1, m.swapped);
+    Object.assign(p, { x: spot.x, y: spot.y, vx: 0, vy: 0, dash: 0, facing: kickoffFacing(m, team) });
     return p;
   }
 
@@ -218,18 +236,77 @@
     const index = { left: 0, right: 0 };
     const players = [...m.players.values()].sort((a, b2) => a.joinedAt - b2.joinedAt);
     for (const p of players) {
-      const spot = formationSpot(p.team, index[p.team]++);
-      Object.assign(p, { x: spot.x, y: spot.y, vx: 0, vy: 0, dash: 0, facing: p.team === "left" ? 0 : Math.PI });
+      const spot = formationSpot(p.team, index[p.team]++, m.swapped);
+      Object.assign(p, { x: spot.x, y: spot.y, vx: 0, vy: 0, dash: 0, facing: kickoffFacing(m, p.team) });
     }
     m.phase = "play";
     m.phaseTime = 0;
   }
 
+  // Fresh game: score 0–0, original ends, and (for timed games) wait for the first player to start the clock.
   function resetMatch(m) {
     m.score = { left: 0, right: 0 };
+    m.swapped = false;
     clearPowerUps(m);
     resetKickoff(m);
     m.events.push({ type: "reset" });
+    setPeriod(m, m.length ? "pre" : "free", 0);
+  }
+
+  function setGameLength(m, minutes) {
+    m.length = GAME_LENGTHS.includes(minutes) ? minutes * 60 : 0;
+    resetMatch(m);
+  }
+
+  function setPeriod(m, period, clock) {
+    m.period = period;
+    m.clock = clock;
+    m.events.push({ type: "period", period, clock, score: { ...m.score } });
+  }
+
+  // Advance the game clock. The clock stops during goal celebrations, like added time.
+  function stepPeriod(m, dt) {
+    switch (m.period) {
+      case "pre":
+        if (m.players.size > 0) setPeriod(m, "first", m.length / 2);
+        break;
+      case "first":
+      case "second":
+        if (m.phase !== "play") break;
+        m.clock = Math.max(0, m.clock - dt);
+        if (m.clock > 0) break;
+        clearPowerUps(m);
+        Object.assign(m.ball, { x: CX, y: CY, vx: 0, vy: 0, lastTouch: null });
+        if (m.period === "first") setPeriod(m, "halftime", HALFTIME);
+        else setPeriod(m, "full", FULLTIME_SHOW);
+        break;
+      case "halftime":
+        m.clock = Math.max(0, m.clock - dt);
+        m.danceAngle += DANCE_SPEED * dt;
+        if (m.clock > 0) break;
+        m.swapped = !m.swapped;
+        resetKickoff(m);
+        setPeriod(m, "second", m.length / 2);
+        break;
+      case "full":
+        m.clock = Math.max(0, m.clock - dt);
+        if (m.clock === 0) resetMatch(m);
+        break;
+    }
+  }
+
+  // Halftime show: everyone conga-dances around the centre circle.
+  function dance(m, p, i, n, dt) {
+    const a = m.danceAngle + (i / Math.max(1, n)) * Math.PI * 2;
+    const tx = CX + Math.cos(a) * DANCE_RADIUS;
+    const ty = CY + Math.sin(a) * DANCE_RADIUS * 0.8;
+    const k = Math.min(1, 3 * dt);
+    p.vx = (tx - p.x) * 3;
+    p.vy = (ty - p.y) * 3;
+    p.x += (tx - p.x) * k;
+    p.y += (ty - p.y) * k;
+    p.facing = a + Math.PI / 2;
+    p.dash = 0;
   }
 
   function collidePlayerBall(m, p) {
@@ -385,8 +462,8 @@
     const b = m.ball;
     if (b.y - BALL_R < CY - GOAL_HALF || b.y + BALL_R > CY + GOAL_HALF) return;
     let team = null;
-    if (b.x + BALL_R < PITCH.L && b.x - BALL_R >= PITCH.L - GOAL_DEPTH) team = "right";
-    else if (b.x - BALL_R > PITCH.R && b.x + BALL_R <= PITCH.R + GOAL_DEPTH) team = "left";
+    if (b.x + BALL_R < PITCH.L && b.x - BALL_R >= PITCH.L - GOAL_DEPTH) team = teamAt(m, "right");
+    else if (b.x - BALL_R > PITCH.R && b.x + BALL_R <= PITCH.R + GOAL_DEPTH) team = teamAt(m, "left");
     if (!team) return;
     const scorer = b.lastTouch ? m.players.get(b.lastTouch) : null;
     const ownGoal = Boolean(scorer && scorer.team !== team);
@@ -448,7 +525,7 @@
   }
 
   function stepStar(m, dt, list) {
-    if (!m.mayhem || m.phase !== "play") return;
+    if (!m.mayhem || m.phase !== "play" || !playing(m)) return;
     const s = m.star;
     if (!s) {
       if (m.powered) return;
@@ -484,7 +561,7 @@
 
   // Mushrooms and flowers sprout in place and wait to be picked up.
   function stepItem(m, dt, list, kind) {
-    if (!m.mayhem || m.phase !== "play") return;
+    if (!m.mayhem || m.phase !== "play" || !playing(m)) return;
     const item = ITEMS[kind];
     const it = m[kind];
     if (!it) {
@@ -520,6 +597,9 @@
     m.t += dt;
     m.phaseTime += dt;
     const k = Math.min(1, RESPONSE * dt);
+    stepPeriod(m, dt);
+    const dancing = m.period === "halftime";
+    const dancers = dancing ? [...m.players.values()].sort((a, b) => a.joinedAt - b.joinedAt) : [];
 
     for (const p of [...m.players.values()]) {
       if (!p.connected) {
@@ -545,6 +625,10 @@
       p.scale += (target - p.scale) * Math.min(1, GROW_RATE * dt);
       if (Math.abs(target - p.scale) < 0.002) p.scale = target;
       p.dash = Math.max(0, p.dash - dt);
+      if (dancing) {
+        dance(m, p, dancers.indexOf(p), dancers.length, dt);
+        continue;
+      }
       // While dashing, momentum wins; otherwise ease toward the stick (sluggish on purpose).
       const kk = p.dash > 0 ? k * 0.15 : k;
       p.vx += (p.input.x * MAX_SPEED - p.vx) * kk;
@@ -571,6 +655,7 @@
     m.powered = list.some((p) => p.star > 0);
     stepStar(m, dt, list);
     for (const kind of Object.keys(ITEMS)) stepItem(m, dt, list, kind);
+    if (dancing) return;
     for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) collidePlayers(list[i], list[j]);
 
     // Substep the ball so fast shots don't tunnel through players or posts.
@@ -582,7 +667,7 @@
       constrainBall(m.ball);
     }
 
-    if (m.phase === "play") checkGoal(m);
+    if (m.phase === "play" && playing(m)) checkGoal(m);
     else if (m.phase === "goal" && m.phaseTime >= GOAL_PAUSE) resetKickoff(m);
   }
 
@@ -625,6 +710,12 @@
     FLOWER_GAP_MAX,
     DISCONNECT_GRACE,
     TEAMS,
+    GAME_LENGTHS,
+    HALFTIME,
+    FULLTIME_SHOW,
+    defends,
+    teamAt,
+    setGameLength,
     createMatch,
     addPlayer,
     setTeam,

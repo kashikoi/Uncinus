@@ -98,6 +98,16 @@
 
     // Effects driven by match events (called by the host as it drains them).
     onEvent(ev, m) {
+      if (ev.type === "period" && (ev.period === "halftime" || ev.period === "full")) {
+        for (let i = 0; i < 120; i++) {
+          const a = this.rand() * Math.PI * 2;
+          const sp = 150 + this.rand() * 450;
+          this.fx.push({
+            kind: "confetti", x: CX, y: CY, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 250,
+            rot: this.rand() * 6, age: 0, life: 2 + this.rand(), color: ["#38bdf8", "#fb923c", "#fde047", "#ffffff"][i % 4], size: 6 + this.rand() * 6,
+          });
+        }
+      }
       if (ev.type === "kick") {
         this.fx.push({ kind: "ring", x: ev.x, y: ev.y, age: 0, life: 0.45, color: "#ffffff" });
       } else if (ev.type === "star-spawn") {
@@ -128,7 +138,7 @@
         }
       } else if (ev.type === "goal") {
         const color = TEAMS[ev.team].color;
-        const gx = ev.team === "left" ? PITCH.R + GOAL_DEPTH / 2 : PITCH.L - GOAL_DEPTH / 2;
+        const gx = M.defends(m, ev.team) === "left" ? PITCH.R + GOAL_DEPTH / 2 : PITCH.L - GOAL_DEPTH / 2;
         for (let i = 0; i < 90; i++) {
           const a = this.rand() * Math.PI * 2;
           const sp = 150 + this.rand() * 450;
@@ -175,7 +185,7 @@
 
       this.drawIsland(ctx, pal);
       this.drawPitch(ctx, pal, m);
-      this.drawNets(ctx, pal, "back");
+      this.drawNets(ctx, pal, "back", m);
 
       const players = [...m.players.values()].sort((a, b) => a.y - b.y);
       this.updateTrails(players, dt);
@@ -194,6 +204,12 @@
         const s = p.scale || 1;
         ctx.save();
         ctx.translate(p.x, p.y);
+        if (m.period === "halftime") {
+          // Dance moves: hop, wiggle and the odd spin.
+          const beat = this.t * 7 + p.number * 1.7 + (p.team === "left" ? 0 : Math.PI);
+          ctx.translate(0, -Math.abs(Math.sin(beat)) * 16);
+          ctx.rotate(Math.sin(beat * 0.5) * 0.35 + (Math.sin(this.t * 0.9 + p.number) > 0.93 ? (this.t * 9) % (Math.PI * 2) : 0));
+        }
         ctx.scale(s, s);
         ctx.translate(-p.x, -p.y);
         if (p.flower > 0) this.drawFlowerAura(ctx, p);
@@ -204,7 +220,8 @@
       }
       if (m.star) this.drawStar(ctx, m.star);
       this.drawBall(ctx, m.ball);
-      this.drawNets(ctx, pal, "front");
+      this.drawNets(ctx, pal, "front", m);
+      if (m.period === "halftime") this.drawNotes(ctx, m);
       this.drawFx(ctx, dt);
       if (pal.flood > 0) this.drawFloodlights(ctx, pal);
       for (const p of players) this.drawTag(ctx, pal, p);
@@ -264,7 +281,7 @@
         ctx.fillStyle = i % 2 ? pal.grassA : pal.grassB;
         ctx.fillRect(PITCH.L + i * sw, PITCH.T, sw + 0.5, PITCH.B - PITCH.T);
       }
-      this.drawTeamSides(ctx);
+      this.drawTeamSides(ctx, m);
       ctx.strokeStyle = pal.line;
       ctx.lineWidth = 4;
       ctx.strokeRect(PITCH.L, PITCH.T, PITCH.R - PITCH.L, PITCH.B - PITCH.T);
@@ -292,10 +309,10 @@
         ctx.arc(gx - side * 150, CY, 90, side < 0 ? -0.93 : Math.PI - 0.93, side < 0 ? 0.93 : Math.PI + 0.93);
         ctx.stroke();
       }
-      // Team-colour stripe along each end line (outside the goal mouth): this end belongs to that team.
-      for (const team of ["left", "right"]) {
-        const x = team === "left" ? PITCH.L - 11 : PITCH.R + 3;
-        ctx.fillStyle = TEAMS[team].color;
+      // Team-colour stripe along each end line (outside the goal mouth): the team defending that end.
+      for (const end of ["left", "right"]) {
+        const x = end === "left" ? PITCH.L - 11 : PITCH.R + 3;
+        ctx.fillStyle = TEAMS[M.teamAt(m, end)].color;
         ctx.fillRect(x, PITCH.T - 2, 8, CY - GOAL_HALF - PITCH.T - POST_R + 2);
         ctx.fillRect(x, CY + GOAL_HALF + POST_R, 8, PITCH.B - CY - GOAL_HALF - POST_R + 2);
       }
@@ -303,21 +320,21 @@
 
     // Paint each half so nobody wonders which way to go: a team tint and big chevrons in the team's colour
     // pointing at the goal it attacks.
-    drawTeamSides(ctx) {
+    drawTeamSides(ctx, m) {
       ctx.save();
-      for (const team of ["left", "right"]) {
-        const dir = team === "left" ? 1 : -1;
-        const color = TEAMS[team].color;
+      for (const end of ["left", "right"]) {
+        const dir = end === "left" ? 1 : -1;
+        const color = TEAMS[M.teamAt(m, end)].color;
         ctx.fillStyle = color;
         ctx.globalAlpha = 0.1;
-        ctx.fillRect(team === "left" ? PITCH.L : CX, PITCH.T, CX - PITCH.L, PITCH.B - PITCH.T);
+        ctx.fillRect(end === "left" ? PITCH.L : CX, PITCH.T, CX - PITCH.L, PITCH.B - PITCH.T);
 
         ctx.globalAlpha = 0.22;
         ctx.strokeStyle = color;
         ctx.lineWidth = 16;
         ctx.lineCap = "round";
         ctx.lineJoin = "round";
-        const x0 = team === "left" ? PITCH.L + 330 : PITCH.R - 330;
+        const x0 = end === "left" ? PITCH.L + 330 : PITCH.R - 330;
         for (const y of [PITCH.T + 120, PITCH.B - 120]) {
           for (let i = 0; i < 3; i++) {
             const x = x0 + dir * i * 70;
@@ -332,13 +349,13 @@
       ctx.restore();
     }
 
-    drawNets(ctx, pal, layer) {
+    drawNets(ctx, pal, layer, m) {
       for (const side of [-1, 1]) {
         const lineX = side < 0 ? PITCH.L : PITCH.R;
         const backX = lineX + side * GOAL_DEPTH;
         const top = CY - GOAL_HALF;
         const bottom = CY + GOAL_HALF;
-        const team = TEAMS[side < 0 ? "left" : "right"];
+        const team = TEAMS[M.teamAt(m, side < 0 ? "left" : "right")];
         if (layer === "back") {
           ctx.fillStyle = pal.netBg;
           ctx.fillRect(Math.min(lineX, backX), top, GOAL_DEPTH, bottom - top);
@@ -476,6 +493,21 @@
       ctx.beginPath();
       ctx.roundRect(p.x - FRAME.half, top, FRAME.half * 2, height, 10);
       ctx.stroke();
+      ctx.restore();
+    }
+
+    // Floating music notes over the halftime dance.
+    drawNotes(ctx, m) {
+      ctx.save();
+      ctx.font = "700 34px Inter, system-ui, -apple-system, sans-serif";
+      ctx.textAlign = "center";
+      for (let i = 0; i < 10; i++) {
+        const life = (this.t * 0.35 + i / 10) % 1;
+        const a = i * 2.4 + m.danceAngle;
+        ctx.globalAlpha = Math.sin(life * Math.PI) * 0.9;
+        ctx.fillStyle = ["#ffffff", "#fde047", "#38bdf8", "#fb923c"][i % 4];
+        ctx.fillText(i % 2 ? "♪" : "♫", CX + Math.cos(a) * 340, CY + Math.sin(a) * 240 - life * 80);
+      }
       ctx.restore();
     }
 

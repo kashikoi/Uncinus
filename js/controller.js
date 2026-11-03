@@ -31,6 +31,9 @@
     face: null,
     faceSeq: 0,
     picked: false,
+    period: null,
+    sides: { left: "left", right: "right" },
+    defends: "left",
     canPick: false,
     counts: {},
     cam: null,
@@ -53,6 +56,9 @@
     stopLink();
     el.teamPick.hidden = true;
     el.attackBar.hidden = true;
+    el.periodScreen.hidden = true;
+    el.meClock.hidden = true;
+    state.period = null;
     document.body.classList.remove("is-star", "is-big", "is-flower");
     el.playScreen.hidden = true;
     el.joinScreen.hidden = false;
@@ -105,8 +111,10 @@
         el.meSwatch.style.backgroundColor = msg.color;
         el.meNumber.textContent = msg.number;
         el.meColor.textContent = `#${msg.number}`;
-        state.attack = msg.team === "left" ? "you attack →" : "← you attack";
-        renderAttack(msg.team);
+        state.sides = msg.sides && msg.sides.left ? msg.sides : { left: "left", right: "right" };
+        state.defends = state.sides[msg.team] || "left";
+        state.attack = state.defends === "left" ? "you attack →" : "← you attack";
+        renderAttack();
         state.canPick = Boolean(msg.pick);
         state.counts = msg.counts || {};
         el.attackBar.toggleAttribute("data-can-pick", state.canPick);
@@ -117,6 +125,12 @@
         break;
       case "score":
         renderScore(msg);
+        break;
+      case "period":
+        onPeriod(msg);
+        break;
+      case "clock":
+        renderClock(msg);
         break;
       case "star":
         setStar(Boolean(msg.on));
@@ -144,13 +158,66 @@
   }
 
   // Mini pitch: the goal you defend is your colour; the other one is where you score.
-  function renderAttack(team) {
-    const left = team === "left";
+  const TEAM_VAR = { left: "var(--sky-team)", right: "var(--ember-team)" };
+
+  // Each end of the mini pitch wears the colour of the team defending it (they swap at halftime).
+  function renderAttack() {
+    const left = state.defends === "left";
+    const teamAt = (end) => (state.sides.left === end ? "left" : "right");
     el.attackBar.hidden = false;
-    el.attackBar.dataset.team = team;
+    el.attackBar.dataset.defends = state.defends;
+    el.goalLeftLabel.style.background = TEAM_VAR[teamAt("left")];
+    el.goalRightLabel.style.background = TEAM_VAR[teamAt("right")];
+    el.pickLeftDir.textContent = state.sides.left === "left" ? "→" : "←";
+    el.pickLeftText.textContent = state.sides.left === "left" ? "attacks right" : "attacks left";
+    el.pickRightDir.textContent = state.sides.right === "left" ? "→" : "←";
+    el.pickRightText.textContent = state.sides.right === "left" ? "attacks right" : "attacks left";
     el.goalLeftLabel.textContent = left ? "🛡 Defend" : "⚽ Score";
     el.goalRightLabel.textContent = left ? "⚽ Score" : "🛡 Defend";
     el.attackArrow.textContent = left ? "Attack →→→" : "←←← Attack";
+  }
+
+  const PERIOD_LABEL = { first: "1st", second: "2nd", halftime: "Half", full: "FT" };
+  const fmtClock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+  function renderClock({ period, clock }) {
+    const label = PERIOD_LABEL[period];
+    const secs = Number.isInteger(clock) ? Math.max(0, clock) : 0;
+    el.meClock.hidden = !label;
+    el.meClock.textContent = label ? `${label} ${period === "full" ? "" : fmtClock(secs)}`.trim() : "";
+    el.periodCount.textContent =
+      period === "halftime" ? `2nd half in ${fmtClock(secs)}` : period === "full" ? `Next game in ${fmtClock(secs)}` : "";
+  }
+
+  function onPeriod(msg) {
+    const prev = state.period;
+    state.period = msg.period;
+    renderClock(msg);
+    if (msg.score) renderScore(msg.score);
+    if (msg.period === "halftime") {
+      showPeriodScreen("is-halftime", "💃 HALFTIME", "Dance break! Teams swap ends for the 2nd half.");
+    } else if (msg.period === "full") {
+      const s = msg.score || {};
+      const mine = s[state.team] || 0;
+      const theirs = s[state.team === "left" ? "right" : "left"] || 0;
+      const [title, kind] = mine > theirs ? ["🏆 YOU WON!", "is-won"] : mine < theirs ? ["You lost", "is-lost"] : ["🤝 It's a draw", "is-draw"];
+      showPeriodScreen(kind, title, `${mine} – ${theirs}`);
+      if (mine > theirs && navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 300]);
+    } else {
+      el.periodScreen.hidden = true;
+      if (msg.period === "second" && prev === "halftime") {
+        powerFlash("is-swap", "🔄 2nd HALF", state.attack ? `Ends swapped — ${state.attack}` : "Teams swapped ends", [120, 60, 120]);
+      } else if (msg.period === "first" && prev && prev !== "first") {
+        powerFlash("is-swap", "⚽ KICK OFF!", state.attack || "", [120]);
+      }
+    }
+  }
+
+  function showPeriodScreen(kind, title, sub) {
+    el.periodScreen.className = `period-screen ${kind}`;
+    el.periodTitle.textContent = title;
+    el.periodSubtext.textContent = sub;
+    el.periodScreen.hidden = false;
   }
 
   // Counts include this player on the team they were dealt onto, so leave them out of it.
@@ -180,7 +247,7 @@
 
   function powerFlash(kind, text, sub, buzz) {
     if (navigator.vibrate) navigator.vibrate(buzz);
-    el.goalFlash.classList.remove("is-ours", "is-star", "is-big", "is-flower");
+    el.goalFlash.classList.remove("is-ours", "is-star", "is-big", "is-flower", "is-swap");
     el.goalFlash.classList.add(kind);
     el.goalFlashText.textContent = text;
     el.goalFlashWho.textContent = sub;
@@ -506,7 +573,8 @@
       "status", "leaveBtn", "stickArea", "stickBase", "stickKnob", "stickHint", "tiltBtn", "tiltLabel", "overlay",
       "overlayText", "overlayBtn", "meNumber", "scoreLeft", "scoreRight", "kickBtn", "goalFlash", "goalFlashText", "goalFlashWho",
       "appVersion", "faceThumb", "faceImg", "faceBlank", "faceHint", "faceBtn", "faceClear", "cam", "camVideo", "camShot",
-      "camError", "camCancel", "camSnap", "camRetake", "camUse", "teamPick", "pickLeft", "pickRight", "attackBar", "goalLeftLabel", "goalRightLabel", "attackArrow",
+      "camError", "camCancel", "camSnap", "camRetake", "camUse", "teamPick", "pickLeft", "pickRight", "attackBar", "goalLeftLabel", "goalRightLabel", "attackArrow", "meClock", "periodScreen", "periodTitle",
+      "periodSubtext", "periodCount", "pickLeftDir", "pickLeftText", "pickRightDir", "pickRightText",
     ].forEach((id) => (el[id] = $(id)));
     el.appVersion.textContent = `v${util.APP_VERSION}`;
 

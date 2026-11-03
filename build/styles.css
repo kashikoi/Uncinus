@@ -1335,7 +1335,7 @@ button.me__swatch {
 .star-toast {
   position: fixed;
   left: 50%;
-  top: 88px;
+  top: 128px;
   transform: translateX(-50%);
   padding: 10px 20px;
   border-radius: 999px;
@@ -1494,14 +1494,14 @@ body.is-flower .me {
   background: var(--ember-team);
 }
 
-.attack-bar[data-team="left"] .attack-bar__goal--left,
-.attack-bar[data-team="right"] .attack-bar__goal--right {
+.attack-bar[data-defends="left"] .attack-bar__goal--left,
+.attack-bar[data-defends="right"] .attack-bar__goal--right {
   opacity: 0.55;
   font-weight: 700;
 }
 
-.attack-bar[data-team="left"] .attack-bar__goal--right,
-.attack-bar[data-team="right"] .attack-bar__goal--left {
+.attack-bar[data-defends="left"] .attack-bar__goal--right,
+.attack-bar[data-defends="right"] .attack-bar__goal--left {
   font-size: 1rem;
   box-shadow: inset 0 0 0 3px #fff;
   animation: score-pulse 1.4s ease-in-out infinite;
@@ -1537,4 +1537,165 @@ body.is-flower .me {
   font-weight: 600;
   color: var(--ink-soft);
   letter-spacing: 0;
+}
+
+/* ---------- Game clock ---------- */
+.match-clock {
+  position: fixed;
+  top: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1rem;
+  white-space: nowrap;
+  z-index: 3;
+}
+
+.match-clock.is-low {
+  color: #fff;
+  background: #dc2626;
+  animation: score-pulse 1s ease-in-out infinite;
+}
+
+.period-banner {
+  position: fixed;
+  left: 50%;
+  top: 30%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+  z-index: 4;
+}
+
+.period-banner__word {
+  font-weight: 900;
+  font-size: clamp(3.5rem, 10vw, 8rem);
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+  color: #fff;
+  -webkit-text-stroke: 4px var(--accent-color, #fde047);
+  paint-order: stroke fill;
+  text-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.period-banner.is-in .period-banner__word {
+  animation: goal-pop 0.6s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+
+.period-banner__sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: var(--glass-strong);
+  font-weight: 800;
+  font-size: 1.3rem;
+}
+
+.period-banner__count {
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+}
+
+.me__clock {
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: var(--glass-strong);
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.period-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+  color: #fff;
+  pointer-events: none;
+}
+
+.period-screen.is-halftime {
+  background: linear-gradient(135deg, #a855f7, #ec4899, #f59e0b);
+  background-size: 300% 300%;
+  animation: party 3s ease-in-out infinite;
+}
+
+.period-screen.is-won {
+  background: linear-gradient(135deg, #fde047, #f59e0b);
+  color: #422006;
+}
+
+.period-screen.is-lost {
+  background: linear-gradient(135deg, #475569, #1e293b);
+}
+
+.period-screen.is-draw {
+  background: linear-gradient(135deg, #38bdf8, #fb923c);
+}
+
+.period-screen__title {
+  font-weight: 900;
+  font-size: clamp(2.2rem, 12vw, 3.6rem);
+  line-height: 1;
+}
+
+.period-screen.is-halftime .period-screen__title {
+  animation: wiggle 0.6s ease-in-out infinite alternate;
+}
+
+.period-screen__sub {
+  font-weight: 700;
+  font-size: 1.2rem;
+  max-width: 300px;
+}
+
+.period-screen__count {
+  margin-top: 10px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  opacity: 0.85;
+}
+
+@keyframes party {
+  0%, 100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes wiggle {
+  from {
+    transform: rotate(-6deg) scale(1);
+  }
+  to {
+    transform: rotate(6deg) scale(1.08);
+  }
+}
+
+.goal-flash.is-swap {
+  background: linear-gradient(135deg, #22c55e, #0ea5e9);
+  color: #fff;
+  padding: 0 24px;
+  text-align: center;
 }
