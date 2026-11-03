@@ -29,7 +29,9 @@ outside the net does not score. Goals pop confetti on the big screen and flash e
 **Reset score** and **New room**.
 
 **Mayhem mode** (Settings → Rules): about once a minute a star drifts onto the pitch. Whoever grabs it is invincible
-for 10 seconds — they can't be blocked, they bowl over anyone they touch, and only they can touch the ball.
+for 10 seconds — they ghost straight through other players and nobody else can touch the ball, so they can dribble
+the length of the pitch uncontested. Now and then a mushroom sprouts too: eat it to grow 2.5× bigger (and heavier)
+for 12 seconds and shove everyone around.
 
 No phone handy? Press <kbd>K</kbd> on the Mac to play with the arrow keys / WASD and Space to kick.
 

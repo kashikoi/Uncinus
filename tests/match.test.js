@@ -259,13 +259,17 @@ test("grabbing the star powers a player up for STAR_POWER seconds", () => {
   assert.ok(M.drainEvents(m).some((e) => e.type === "star-end" && e.id === "aaaaaa"));
 });
 
-test("a star player can't be pushed, and flings whoever they touch", () => {
+test("a star player ghosts straight through other players", () => {
   const { m, hero, foe } = starMatch();
   Object.assign(hero, { x: M.CX - 200, y: M.CY + 250, vx: 0, vy: 0 });
-  Object.assign(foe, { x: M.CX - 170, y: M.CY + 250, vx: -400, vy: 0 });
+  Object.assign(foe, { x: M.CX - 190, y: M.CY + 250, vx: 0, vy: 0 });
   M.step(m, 1 / 120);
-  assert.ok(Math.abs(hero.x - (M.CX - 200)) < 0.01, "hero didn't move");
-  assert.ok(foe.vx > 300, `foe flung away (${foe.vx})`);
+  assert.ok(Math.abs(hero.x - (M.CX - 200)) < 0.01 && Math.abs(foe.x - (M.CX - 190)) < 0.01, "nobody was pushed");
+  // Run the hero right through a wall of defenders.
+  Object.assign(foe, { x: M.CX - 100, y: M.CY + 250 });
+  M.setInput(m, hero.id, { x: 1, y: 0 });
+  run(m, 1.5);
+  assert.ok(hero.x > foe.x + M.HALF * 2, `hero passed through (${hero.x} vs ${foe.x})`);
 });
 
 test("while someone has the star only they can touch the ball", () => {
@@ -292,4 +296,65 @@ test("resetMatch and turning mayhem off end any star power", () => {
   M.setMayhem(m, false);
   assert.equal(hero.star, 0);
   assert.equal(m.powered, false);
+});
+
+function shroomMatch() {
+  const m = M.createMatch();
+  m.rand = seeded(9);
+  const big = M.addPlayer(m, "aaaaaa", "Big");
+  const small = M.addPlayer(m, "bbbbbb", "Small");
+  M.setMayhem(m, true);
+  m.shroom = { x: big.x, y: big.y, age: 0 };
+  M.step(m, 1 / 120);
+  return { m, big, small };
+}
+
+test("mayhem sprouts a mushroom on schedule; it withers if nobody eats it", () => {
+  const m = M.createMatch();
+  m.rand = seeded(4);
+  M.setMayhem(m, true);
+  const wait = m.shroomIn;
+  assert.ok(wait >= M.SHROOM_GAP_MIN && wait <= M.SHROOM_GAP_MAX);
+  let t = 0;
+  for (; !m.shroom && t < M.SHROOM_GAP_MAX + 1; t += 1 / 60) M.step(m, 1 / 60);
+  assert.ok(m.shroom && Math.abs(t - wait) < 0.1);
+  const { x, y } = m.shroom;
+  run(m, 2);
+  assert.deepEqual([m.shroom.x, m.shroom.y], [x, y], "mushrooms stay put");
+  run(m, M.SHROOM_LIFE);
+  assert.equal(m.shroom, null);
+  assert.ok(M.drainEvents(m).some((e) => e.type === "shroom-gone"));
+});
+
+test("eating the mushroom grows a player BIG_SCALE times for BIG_POWER seconds", () => {
+  const { m, big } = shroomMatch();
+  assert.equal(m.shroom, null);
+  assert.equal(M.drainEvents(m).find((e) => e.type === "shroom-get").id, "aaaaaa");
+  run(m, 1.5);
+  assert.ok(Math.abs(big.scale - M.BIG_SCALE) < 0.01, `grew (${big.scale})`);
+  run(m, M.BIG_POWER);
+  assert.equal(big.big, 0);
+  assert.ok(Math.abs(big.scale - 1) < 0.01, `shrank back (${big.scale})`);
+  assert.ok(M.drainEvents(m).some((e) => e.type === "shroom-end"));
+});
+
+test("a big player bulldozes a normal one", () => {
+  const { m, big, small } = shroomMatch();
+  run(m, 1.5);
+  Object.assign(big, { x: M.CX - 300, y: M.CY, vx: 0, vy: 0 });
+  Object.assign(small, { x: M.CX - 300 + M.HALF * M.BIG_SCALE + M.HALF, y: M.CY, vx: 0, vy: 0 });
+  M.setInput(m, big.id, { x: 1, y: 0 });
+  M.setInput(m, small.id, { x: -1, y: 0 });
+  const start = big.x;
+  run(m, 1.5);
+  assert.ok(big.x - start > 150, `big player kept driving forward (${big.x - start})`);
+  assert.ok(small.x > big.x, "small player was pushed ahead, not through");
+});
+
+test("a big player stays inside the pitch", () => {
+  const { m, big } = shroomMatch();
+  M.setInput(m, big.id, { x: -1, y: -1 });
+  run(m, 5);
+  const h = M.HALF * big.scale;
+  assert.ok(big.x >= M.PITCH.L + h - 0.01 && big.y >= M.PITCH.T + h - 0.01);
 });

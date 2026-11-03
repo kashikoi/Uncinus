@@ -25,15 +25,22 @@
   const BALL_MAX = 1150;
   const WALL_E = 0.78;
 
-  // Mayhem mode: a star drifts onto the pitch now and then; grabbing it makes a player untouchable and
-  // the only one who can play the ball until it wears off.
+  // Mayhem mode: a star drifts onto the pitch now and then; grabbing it turns a player into a ghost who
+  // passes through everyone and is the only one who can touch the ball until it wears off.
   const STAR_R = 22;
   const STAR_SPEED = 90;
   const STAR_LIFE = 15; // seconds an uncollected star stays on the pitch
   const STAR_POWER = 10; // seconds of invincibility
   const STAR_GAP_MIN = 40; // seconds between stars (uniform, ~1 a minute)
   const STAR_GAP_MAX = 80;
-  const STAR_BUMP = 520; // knock-back speed for anyone a star player runs into
+  // ...and a mushroom sprouts now and then; eating it makes a player BIG_SCALE× bigger and heavier.
+  const SHROOM_R = 20;
+  const SHROOM_LIFE = 15;
+  const BIG_POWER = 12; // seconds of being huge
+  const BIG_SCALE = 2.5;
+  const SHROOM_GAP_MIN = 35;
+  const SHROOM_GAP_MAX = 75;
+  const GROW_RATE = 6; // how fast size eases toward its target (1/s)
 
   const GOAL_PAUSE = 2.6;
   const DISCONNECT_GRACE = 20;
@@ -45,6 +52,14 @@
   };
 
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const half = (p) => HALF * (p.scale || 1);
+  const mass = (p) => (p.scale || 1) ** 2;
+
+  // Does a circle at (x, y) with radius r touch player p's block?
+  function touches(p, x, y, r) {
+    const h = half(p);
+    return Math.hypot(x - clamp(x, p.x - h, p.x + h), y - clamp(y, p.y - h, p.y + h)) < r;
+  }
 
   function createMatch() {
     return {
@@ -60,6 +75,8 @@
       powered: false,
       star: null,
       starIn: 0,
+      shroom: null,
+      shroomIn: 0,
       rand: Math.random,
     };
   }
@@ -109,6 +126,8 @@
       cooldown: 0,
       kickedBall: false,
       star: 0,
+      big: 0,
+      scale: 1,
       connected: true,
       goneFor: 0,
       joinedAt: m.t,
@@ -191,7 +210,7 @@
 
   function resetMatch(m) {
     m.score = { left: 0, right: 0 };
-    clearStars(m);
+    clearPowerUps(m);
     resetKickoff(m);
     m.events.push({ type: "reset" });
   }
@@ -199,8 +218,9 @@
   function collidePlayerBall(m, p) {
     if (m.powered && p.star <= 0) return;
     const b = m.ball;
-    const cx = clamp(b.x, p.x - HALF, p.x + HALF);
-    const cy = clamp(b.y, p.y - HALF, p.y + HALF);
+    const h = half(p);
+    const cx = clamp(b.x, p.x - h, p.x + h);
+    const cy = clamp(b.y, p.y - h, p.y + h);
     const dx = b.x - cx;
     const dy = b.y - cy;
     const d = Math.hypot(dx, dy);
@@ -216,14 +236,14 @@
       // Ball center is inside the block: push it out through the nearest face.
       const ox = b.x - p.x;
       const oy = b.y - p.y;
-      if (HALF - Math.abs(ox) < HALF - Math.abs(oy)) {
+      if (h - Math.abs(ox) < h - Math.abs(oy)) {
         nx = Math.sign(ox) || 1;
         ny = 0;
-        overlap = HALF - Math.abs(ox) + BALL_R;
+        overlap = h - Math.abs(ox) + BALL_R;
       } else {
         nx = 0;
         ny = Math.sign(oy) || 1;
-        overlap = HALF - Math.abs(oy) + BALL_R;
+        overlap = h - Math.abs(oy) + BALL_R;
       }
     }
     b.x += nx * overlap;
@@ -242,36 +262,31 @@
     b.lastTouch = p.id;
   }
 
+  // Circle push + velocity exchange, weighted by mass so a big player shoves others around.
+  // Star players are ghosts: they pass straight through everyone.
   function collidePlayers(a, c) {
-    const r = HALF * 1.9;
+    if (a.star > 0 || c.star > 0) return;
+    const r = (half(a) + half(c)) * 0.95;
     const dx = c.x - a.x;
     const dy = c.y - a.y;
     const d = Math.hypot(dx, dy);
     if (d >= r || d < 1e-6) return;
     const nx = dx / d;
     const ny = dy / d;
-    if ((a.star > 0) !== (c.star > 0)) {
-      // The star player doesn't budge; whoever they touch is flung away.
-      const [hero, other, sx, sy] = a.star > 0 ? [a, c, nx, ny] : [c, a, -nx, -ny];
-      other.x += sx * (r - d);
-      other.y += sy * (r - d);
-      other.vx = sx * STAR_BUMP + hero.vx * 0.3;
-      other.vy = sy * STAR_BUMP + hero.vy * 0.3;
-      other.dash = 0;
-      return;
-    }
-    const push = (r - d) / 2;
-    a.x -= nx * push;
-    a.y -= ny * push;
-    c.x += nx * push;
-    c.y += ny * push;
+    const ma = mass(a);
+    const mc = mass(c);
+    const overlap = r - d;
+    a.x -= nx * overlap * (mc / (ma + mc));
+    a.y -= ny * overlap * (mc / (ma + mc));
+    c.x += nx * overlap * (ma / (ma + mc));
+    c.y += ny * overlap * (ma / (ma + mc));
     const vn = (c.vx - a.vx) * nx + (c.vy - a.vy) * ny;
     if (vn < 0) {
-      const j = -0.65 * vn;
-      a.vx -= j * nx;
-      a.vy -= j * ny;
-      c.vx += j * nx;
-      c.vy += j * ny;
+      const j = (-1.3 * vn) / (1 / ma + 1 / mc);
+      a.vx -= (j / ma) * nx;
+      a.vy -= (j / ma) * ny;
+      c.vx += (j / mc) * nx;
+      c.vy += (j / mc) * ny;
     }
   }
 
@@ -371,27 +386,36 @@
   }
 
   const starGap = (m) => STAR_GAP_MIN + m.rand() * (STAR_GAP_MAX - STAR_GAP_MIN);
+  const shroomGap = (m) => SHROOM_GAP_MIN + m.rand() * (SHROOM_GAP_MAX - SHROOM_GAP_MIN);
 
-  function clearStars(m) {
+  function clearPowerUps(m) {
     m.star = null;
+    m.shroom = null;
     for (const p of m.players.values()) {
       if (p.star > 0) m.events.push({ type: "star-end", id: p.id });
+      if (p.big > 0) m.events.push({ type: "shroom-end", id: p.id });
       p.star = 0;
+      p.big = 0;
     }
     m.powered = false;
     m.starIn = starGap(m);
+    m.shroomIn = shroomGap(m);
   }
 
   function setMayhem(m, on) {
     m.mayhem = Boolean(on);
-    clearStars(m);
+    clearPowerUps(m);
   }
+
+  const randomSpot = (m, margin) => ({
+    x: PITCH.L + 160 + m.rand() * (PITCH.R - PITCH.L - 320),
+    y: PITCH.T + margin + m.rand() * (PITCH.B - PITCH.T - margin * 2),
+  });
 
   function spawnStar(m) {
     const a = m.rand() * Math.PI * 2;
     m.star = {
-      x: PITCH.L + 160 + m.rand() * (PITCH.R - PITCH.L - 320),
-      y: PITCH.T + 80 + m.rand() * (PITCH.B - PITCH.T - 160),
+      ...randomSpot(m, 80),
       vx: Math.cos(a) * STAR_SPEED,
       vy: Math.sin(a) * STAR_SPEED,
       age: 0,
@@ -423,14 +447,44 @@
     }
     for (const p of list) {
       if (!p.connected || !m.players.has(p.id)) continue;
-      const dx = s.x - clamp(s.x, p.x - HALF, p.x + HALF);
-      const dy = s.y - clamp(s.y, p.y - HALF, p.y + HALF);
-      if (Math.hypot(dx, dy) < STAR_R) {
+      if (touches(p, s.x, s.y, STAR_R)) {
         p.star = STAR_POWER;
         m.star = null;
         m.powered = true;
         m.starIn = starGap(m);
         m.events.push({ type: "star-get", id: p.id, name: p.name, x: s.x, y: s.y });
+        return;
+      }
+    }
+  }
+
+  // The mushroom sprouts in place and waits; only one player can be huge at a time.
+  function stepShroom(m, dt, list) {
+    if (!m.mayhem || m.phase !== "play") return;
+    const s = m.shroom;
+    if (!s) {
+      if (list.some((p) => p.big > 0)) return;
+      m.shroomIn -= dt;
+      if (m.shroomIn <= 0) {
+        m.shroom = { ...randomSpot(m, 70), age: 0 };
+        m.events.push({ type: "shroom-spawn", x: m.shroom.x, y: m.shroom.y });
+      }
+      return;
+    }
+    s.age += dt;
+    if (s.age >= SHROOM_LIFE) {
+      m.shroom = null;
+      m.shroomIn = shroomGap(m);
+      m.events.push({ type: "shroom-gone" });
+      return;
+    }
+    for (const p of list) {
+      if (!p.connected || !m.players.has(p.id)) continue;
+      if (touches(p, s.x, s.y, SHROOM_R)) {
+        p.big = BIG_POWER;
+        m.shroom = null;
+        m.shroomIn = shroomGap(m);
+        m.events.push({ type: "shroom-get", id: p.id, name: p.name, x: s.x, y: s.y });
         return;
       }
     }
@@ -456,6 +510,13 @@
         p.star = Math.max(0, p.star - dt);
         if (p.star === 0) m.events.push({ type: "star-end", id: p.id });
       }
+      if (p.big > 0) {
+        p.big = Math.max(0, p.big - dt);
+        if (p.big === 0) m.events.push({ type: "shroom-end", id: p.id });
+      }
+      const target = p.big > 0 ? BIG_SCALE : 1;
+      p.scale += (target - p.scale) * Math.min(1, GROW_RATE * dt);
+      if (Math.abs(target - p.scale) < 0.002) p.scale = target;
       p.dash = Math.max(0, p.dash - dt);
       // While dashing, momentum wins; otherwise ease toward the stick (sluggish on purpose).
       const kk = p.dash > 0 ? k * 0.15 : k;
@@ -464,10 +525,11 @@
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       if (Math.hypot(p.vx, p.vy) > 25) p.facing = Math.atan2(p.vy, p.vx);
-      const minX = PITCH.L + HALF;
-      const maxX = PITCH.R - HALF;
-      const minY = PITCH.T + HALF;
-      const maxY = PITCH.B - HALF;
+      const h = half(p);
+      const minX = PITCH.L + h;
+      const maxX = PITCH.R - h;
+      const minY = PITCH.T + h;
+      const maxY = PITCH.B - h;
       if (p.x < minX || p.x > maxX) {
         p.x = clamp(p.x, minX, maxX);
         p.vx *= -0.4;
@@ -481,6 +543,7 @@
     const list = [...m.players.values()];
     m.powered = list.some((p) => p.star > 0);
     stepStar(m, dt, list);
+    stepShroom(m, dt, list);
     for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) collidePlayers(list[i], list[j]);
 
     // Substep the ball so fast shots don't tunnel through players or posts.
@@ -521,6 +584,12 @@
     STAR_POWER,
     STAR_GAP_MIN,
     STAR_GAP_MAX,
+    SHROOM_R,
+    SHROOM_LIFE,
+    BIG_POWER,
+    BIG_SCALE,
+    SHROOM_GAP_MIN,
+    SHROOM_GAP_MAX,
     DISCONNECT_GRACE,
     TEAMS,
     createMatch,

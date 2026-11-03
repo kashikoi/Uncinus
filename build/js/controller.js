@@ -49,7 +49,7 @@
   function showJoin(error) {
     stopLink();
     el.teamPick.hidden = true;
-    document.body.classList.remove("is-star");
+    document.body.classList.remove("is-star", "is-big");
     el.playScreen.hidden = true;
     el.joinScreen.hidden = false;
     el.joinError.hidden = !error;
@@ -113,6 +113,9 @@
       case "star":
         setStar(Boolean(msg.on));
         break;
+      case "big":
+        setBig(Boolean(msg.on));
+        break;
       case "goal":
         renderScore(msg.score || {});
         flashGoal(msg);
@@ -140,12 +143,20 @@
 
   function setStar(on) {
     document.body.classList.toggle("is-star", on);
-    if (!on) return;
-    if (navigator.vibrate) navigator.vibrate([80, 40, 80, 40, 160]);
-    el.goalFlash.classList.remove("is-ours");
-    el.goalFlash.classList.add("is-star");
-    el.goalFlashText.textContent = "⭐ INVINCIBLE!";
-    el.goalFlashWho.textContent = "Nobody can stop you — only you can touch the ball";
+    if (on) powerFlash("is-star", "⭐ INVINCIBLE!", "Run through anyone — only you can touch the ball", [80, 40, 80, 40, 160]);
+  }
+
+  function setBig(on) {
+    document.body.classList.toggle("is-big", on);
+    if (on) powerFlash("is-big", "🍄 HUGE!", "You're giant — shove everyone out of the way", [200, 60, 300]);
+  }
+
+  function powerFlash(kind, text, sub, buzz) {
+    if (navigator.vibrate) navigator.vibrate(buzz);
+    el.goalFlash.classList.remove("is-ours", "is-star", "is-big");
+    el.goalFlash.classList.add(kind);
+    el.goalFlashText.textContent = text;
+    el.goalFlashWho.textContent = sub;
     el.goalFlash.hidden = false;
     clearTimeout(state.goalTimer);
     state.goalTimer = setTimeout(() => (el.goalFlash.hidden = true), 2200);
@@ -157,7 +168,7 @@
   }
 
   function flashGoal(msg) {
-    el.goalFlash.classList.remove("is-star");
+    el.goalFlash.classList.remove("is-star", "is-big");
     const ours = msg.team === state.team;
     const mine = msg.scorerId === state.id;
     el.goalFlash.classList.toggle("is-ours", ours);

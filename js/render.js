@@ -4,7 +4,7 @@
 
   const U = root.Uncinus;
   const M = U.match;
-  const { W, H, PITCH, CX, CY, GOAL_HALF, GOAL_DEPTH, POST_R, HALF, BALL_R, TEAMS, STAR_R, STAR_LIFE } = M;
+  const { W, H, PITCH, CX, CY, GOAL_HALF, GOAL_DEPTH, POST_R, HALF, BALL_R, TEAMS, STAR_R, STAR_LIFE, SHROOM_R, SHROOM_LIFE } = M;
   const { FACE_OVAL } = U.face;
   // The frame of a face player: the same outline as a block's "Kick ready" ring (block + 9 px lift + 4 px margin).
   const FRAME = { half: HALF + 4, top: HALF + 4, bottom: HALF + 13 };
@@ -102,6 +102,10 @@
         this.fx.push({ kind: "ring", x: ev.x, y: ev.y, age: 0, life: 0.45, color: "#ffffff" });
       } else if (ev.type === "star-spawn") {
         this.fx.push({ kind: "ring", x: ev.x, y: ev.y, age: 0, life: 0.6, color: "#fde047" });
+      } else if (ev.type === "shroom-spawn") {
+        this.fx.push({ kind: "ring", x: ev.x, y: ev.y, age: 0, life: 0.6, color: "#ef4444" });
+      } else if (ev.type === "shroom-get") {
+        for (let i = 0; i < 3; i++) this.fx.push({ kind: "ring", x: ev.x, y: ev.y, age: 0, life: 0.5 + i * 0.25, color: i ? "#ef4444" : "#ffffff" });
       } else if (ev.type === "star-get") {
         for (let i = 0; i < 40; i++) {
           const a = this.rand() * Math.PI * 2;
@@ -165,15 +169,24 @@
       const players = [...m.players.values()].sort((a, b) => a.y - b.y);
       this.updateTrails(players, dt);
       for (const p of players) {
+        const s = p.scale || 1;
         // Face players are see-through inside their frame, so their shadow sits just below it.
-        if (this.faceOf(p)) this.drawShadow(ctx, pal, p.x, p.y + FRAME.bottom + 4, HALF * 1.1, 6, p.connected ? 0.8 : 0.3);
-        else this.drawShadow(ctx, pal, p.x, p.y + HALF + 6, HALF * 1.25, 9, p.connected ? 1 : 0.4);
+        if (this.faceOf(p)) this.drawShadow(ctx, pal, p.x, p.y + (FRAME.bottom + 4) * s, HALF * 1.1 * s, 6 * s, p.connected ? 0.8 : 0.3);
+        else this.drawShadow(ctx, pal, p.x, p.y + (HALF + 6) * s, HALF * 1.25 * s, 9 * s, p.connected ? 1 : 0.4);
       }
+      if (m.shroom) this.drawShroom(ctx, pal, m.shroom);
       this.drawShadow(ctx, pal, m.ball.x + 5, m.ball.y + BALL_R * 0.8, BALL_R * 1.05, 5, 1);
       this.drawTrails(ctx, players);
       for (const p of players) {
+        // Mushroom-sized players are drawn scaled about their centre.
+        const s = p.scale || 1;
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.scale(s, s);
+        ctx.translate(-p.x, -p.y);
         this.drawPlayer(ctx, p);
         if (p.star > 0) this.drawStarAura(ctx, p);
+        ctx.restore();
       }
       if (m.star) this.drawStar(ctx, m.star);
       this.drawBall(ctx, m.ball);
@@ -339,7 +352,8 @@
         for (const s of this.trails.get(p.id) || []) {
           ctx.globalAlpha = 0.35 * (1 - s.age / 0.25);
           ctx.fillStyle = team.color;
-          ctx.fillRect(s.x - HALF, s.y - HALF, HALF * 2, HALF * 2);
+          const h = HALF * (p.scale || 1);
+          ctx.fillRect(s.x - h, s.y - h, h * 2, h * 2);
         }
       }
       ctx.globalAlpha = 1;
@@ -447,6 +461,52 @@
         ctx.ellipse(ex, -1, 2.4, 5.5, 0, 0, Math.PI * 2);
         ctx.fill();
       }
+      ctx.restore();
+    }
+
+    // A red-capped, white-spotted mushroom with a face; it pops up from the grass and blinks before withering.
+    drawShroom(ctx, pal, s) {
+      const left = SHROOM_LIFE - s.age;
+      if (left < 3 && Math.floor(left * 6) % 2) return;
+      const grow = Math.min(1, s.age / 0.5);
+      const pop = grow < 1 ? grow * (1 + 0.3 * Math.sin(grow * Math.PI)) : 1 + Math.sin(this.t * 4) * 0.03;
+      const R = SHROOM_R;
+      this.drawShadow(ctx, pal, s.x, s.y + R * 0.75, R * 0.9 * grow, 5 * grow, 0.8);
+      ctx.save();
+      ctx.translate(s.x, s.y + R * 0.75);
+      ctx.scale(pop, pop);
+      ctx.translate(0, -R * 0.75);
+      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = "#7f1d1d";
+      // Stem with eyes.
+      ctx.fillStyle = "#fef3c7";
+      ctx.beginPath();
+      ctx.roundRect(-R * 0.5, -R * 0.05, R, R * 0.8, R * 0.25);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#111827";
+      for (const ex of [-R * 0.18, R * 0.18]) {
+        ctx.beginPath();
+        ctx.ellipse(ex, R * 0.32, 2, 4.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Cap.
+      ctx.fillStyle = "#ef4444";
+      ctx.beginPath();
+      ctx.moveTo(-R * 1.05, R * 0.05);
+      ctx.bezierCurveTo(-R * 1.15, -R * 1.25, R * 1.15, -R * 1.25, R * 1.05, R * 0.05);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.save();
+      ctx.clip();
+      ctx.fillStyle = "#ffffff";
+      for (const [x, y, r] of [[0, -R * 0.62, R * 0.32], [-R * 0.82, -R * 0.2, R * 0.3], [R * 0.82, -R * 0.2, R * 0.3]]) {
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
       ctx.restore();
     }
 
@@ -579,7 +639,7 @@
       ctx.font = "600 15px Inter, system-ui, -apple-system, sans-serif";
       const w = ctx.measureText(label).width + 18;
       const x = p.x - w / 2;
-      const y = p.y - HALF - 30;
+      const y = p.y - (HALF + 4) * (p.scale || 1) - 26;
       ctx.fillStyle = pal.tagBg;
       ctx.beginPath();
       ctx.roundRect(x, y, w, 22, 11);

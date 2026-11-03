@@ -162,6 +162,13 @@
         sendTo(ev.id, { t: "star", on: true, secs: M.STAR_POWER });
       } else if (ev.type === "star-end") {
         sendTo(ev.id, { t: "star", on: false });
+      } else if (ev.type === "shroom-spawn") {
+        showStarToast("🍄 A mushroom sprouted — eat it!");
+      } else if (ev.type === "shroom-get") {
+        showStarToast(`🍄 ${ev.name} got HUGE!`);
+        sendTo(ev.id, { t: "big", on: true, secs: M.BIG_POWER });
+      } else if (ev.type === "shroom-end") {
+        sendTo(ev.id, { t: "big", on: false });
       }
     }
   }

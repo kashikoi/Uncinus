@@ -34,11 +34,14 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
 - Rules (host Settings, saved in `uncinus_team_pick` / `uncinus_mayhem`): team pick → host sends new players
   `pick{counts}`, phone answers `{t:"team", team}`, host calls `M.setTeam` and re-sends `you`. Mayhem → `M.setMayhem`;
   the star (`m.star`, spawned every `STAR_GAP_MIN..MAX` s using `m.rand`, only while nobody is powered) gives
-  `p.star = STAR_POWER`: star players don't get pushed and fling others (`STAR_BUMP`), and while `m.powered` only
-  they collide with the ball. Events `star-spawn/get/gone/end`; host→player `star{on}`.
+  `p.star = STAR_POWER`: star players skip player–player collision entirely (ghosts), and while `m.powered` only
+  they collide with the ball. Events `star-spawn/get/gone/end`; host→player `star{on}`. The mushroom (`m.shroom`,
+  stationary, own `SHROOM_GAP` timer, one big player at a time) gives `p.big = BIG_POWER`; `p.scale` eases to
+  `BIG_SCALE`. Player size is per-player (`half(p)`, mass = scale²) in walls/ball/push — never use bare `HALF` for a
+  player. Renderer draws players scaled about their centre. Events `shroom-spawn/get/gone/end`; host→player `big{on}`.
 - Relay: one Durable Object per room code, max 12 players, `bye` before every server close (4001/4004/4009/4400).
 - Protocol: host→player `you{name,team,teamName,color,number}`, `score{left,right}`, `goal{team,scorerId,
-  scorerName,ownGoal,score}`, `pick{counts}`, `star{on,secs}`, `full`; relay→player `welcome`, `host-left`, `host-back`.
+  scorerName,ownGoal,score}`, `pick{counts}`, `star{on,secs}`, `big{on,secs}`, `full`; relay→player `welcome`, `host-left`, `host-back`.
 - `[hidden] { display:none !important }` is required.
 
 ## Testing

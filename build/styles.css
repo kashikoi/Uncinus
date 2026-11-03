@@ -1369,8 +1369,22 @@ button.me__swatch {
   text-align: center;
 }
 
-.goal-flash.is-star span {
+.goal-flash.is-star span,
+.goal-flash.is-big span {
   font-size: clamp(2rem, 11vw, 3.4rem);
+}
+
+.goal-flash.is-big {
+  background: radial-gradient(circle at 30% 30%, #ffffff 0 10%, transparent 11%),
+    radial-gradient(circle at 75% 70%, #ffffff 0 8%, transparent 9%), linear-gradient(135deg, #f87171, #dc2626);
+  color: #fff;
+  padding: 0 24px;
+  text-align: center;
+}
+
+body.is-big .me {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 3px #ef4444, 0 0 24px #dc2626;
 }
 
 @keyframes star-hue {
