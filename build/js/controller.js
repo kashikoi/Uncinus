@@ -3,8 +3,11 @@
   "use strict";
 
   const V = window.Uncinus;
-  const { util } = V;
+  const { util, face: F } = V;
   const NAME_KEY = "uncinus_name";
+  const FACE_KEY = "uncinus_face";
+  // Square crop of the camera view that frames the guide oval (it is 84% of the view tall).
+  const FACE_CROP = 0.84;
   const ID_KEY = "uncinus_player_id";
   const SEND_EVERY_MS = 50;
   const TILT_RANGE_DEG = 22;
@@ -27,6 +30,9 @@
     tilt: { on: false, x: 0, y: 0, neutral: null },
     wakeLock: null,
     sendTimer: null,
+    face: null,
+    faceSeq: 0,
+    cam: null,
   };
 
   const $ = (id) => document.getElementById(id);
@@ -64,7 +70,8 @@
     el.meName.textContent = name;
     el.meRoom.textContent = room;
     el.meColor.textContent = "Joining";
-    el.meSwatch.style.background = "";
+    el.meSwatch.style.backgroundColor = "";
+    renderFace();
     el.meNumber.textContent = "";
 
     stopLink();
@@ -88,8 +95,9 @@
         hideOverlay();
         break;
       case "you":
+        sendFace();
         state.team = msg.team;
-        el.meSwatch.style.background = msg.color;
+        el.meSwatch.style.backgroundColor = msg.color;
         el.meNumber.textContent = msg.number;
         el.meColor.textContent = `Team ${msg.teamName} · #${msg.number}`;
         state.attack = msg.team === "left" ? "you attack →" : "← you attack";
@@ -153,6 +161,122 @@
 
   function hideOverlay() {
     el.overlay.hidden = true;
+  }
+
+  // ---------- Face photo ----------
+  function loadFace() {
+    try {
+      const saved = localStorage.getItem(FACE_KEY);
+      state.face = F.isFaceDataUrl(saved) ? saved : null;
+    } catch {
+      state.face = null;
+    }
+  }
+
+  function saveFace(dataUrl) {
+    state.face = dataUrl;
+    try {
+      if (dataUrl) localStorage.setItem(FACE_KEY, dataUrl);
+      else localStorage.removeItem(FACE_KEY);
+    } catch {
+      // Private mode etc.; the face still works for this session.
+    }
+    renderFace();
+    sendFace();
+  }
+
+  // Sent after every "you" (so a reloaded big screen gets it again) and whenever the photo changes.
+  function sendFace() {
+    if (!state.link || state.link.status !== "open") return;
+    for (const chunk of F.chunkFace(state.face, ++state.faceSeq)) state.link.send(chunk);
+  }
+
+  function renderFace() {
+    el.faceImg.hidden = !state.face;
+    el.faceBlank.hidden = Boolean(state.face);
+    if (state.face) el.faceImg.src = state.face;
+    el.faceBtn.textContent = state.face ? "Retake" : "Take selfie";
+    el.faceClear.hidden = !state.face;
+    el.faceHint.textContent = state.face ? "You'll play with this face" : "Optional — play as yourself";
+    el.meSwatch.style.backgroundImage = state.face ? `url("${state.face}")` : "";
+    el.meSwatch.classList.toggle("has-face", Boolean(state.face));
+  }
+
+  function camMessage(err) {
+    if (!window.isSecureContext) return "The camera needs an https:// page.";
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return "This browser can't use the camera.";
+    if (err && err.name === "NotAllowedError") return "Camera access was blocked. Allow it in your browser settings, or skip the photo.";
+    if (err && err.name === "NotFoundError") return "No camera found on this device.";
+    return "Couldn't start the camera.";
+  }
+
+  async function openCamera() {
+    el.cam.hidden = false;
+    el.camError.hidden = true;
+    showCamShot(null);
+    try {
+      if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw null;
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "user", width: { ideal: 720 }, height: { ideal: 720 } },
+        audio: false,
+      });
+      if (el.cam.hidden) {
+        stream.getTracks().forEach((t) => t.stop());
+        return;
+      }
+      state.cam = stream;
+      el.camVideo.srcObject = stream;
+      await el.camVideo.play().catch(() => {});
+    } catch (err) {
+      el.camError.textContent = camMessage(err);
+      el.camError.hidden = false;
+      el.camSnap.hidden = true;
+    }
+  }
+
+  function closeCamera() {
+    if (state.cam) state.cam.getTracks().forEach((t) => t.stop());
+    state.cam = null;
+    el.camVideo.srcObject = null;
+    el.cam.hidden = true;
+  }
+
+  function showCamShot(dataUrl) {
+    el.camShot.hidden = !dataUrl;
+    el.camVideo.hidden = Boolean(dataUrl);
+    if (dataUrl) el.camShot.src = dataUrl;
+    else el.camShot.removeAttribute("src");
+    el.camSnap.hidden = Boolean(dataUrl);
+    el.camRetake.hidden = !dataUrl;
+    el.camUse.hidden = !dataUrl;
+  }
+
+  // The view is a square showing the video with object-fit: cover, so its visible area is the
+  // centred square of the frame; crop the part framed by the oval and mirror it like the preview.
+  function snap() {
+    const v = el.camVideo;
+    if (!v.videoWidth) return;
+    const side = Math.min(v.videoWidth, v.videoHeight) * FACE_CROP;
+    const sx = (v.videoWidth - side) / 2;
+    const sy = (v.videoHeight - side) / 2;
+    const canvas = document.createElement("canvas");
+    canvas.width = canvas.height = F.FACE_SIZE;
+    const ctx = canvas.getContext("2d");
+    ctx.translate(F.FACE_SIZE, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(v, sx, sy, side, side, 0, 0, F.FACE_SIZE, F.FACE_SIZE);
+    let dataUrl = null;
+    for (const q of [0.82, 0.7, 0.55, 0.4]) {
+      dataUrl = canvas.toDataURL("image/jpeg", q);
+      if (F.isFaceDataUrl(dataUrl)) break;
+    }
+    if (!F.isFaceDataUrl(dataUrl)) {
+      el.camError.textContent = "Couldn't process that photo — try again.";
+      el.camError.hidden = false;
+      return;
+    }
+    el.camError.hidden = true;
+    showCamShot(dataUrl);
   }
 
   // ---------- Input ----------
@@ -310,7 +434,8 @@
       "joinScreen", "playScreen", "joinForm", "roomInput", "nameInput", "joinError", "meSwatch", "meName", "meColor", "meRoom",
       "status", "leaveBtn", "stickArea", "stickBase", "stickKnob", "stickHint", "tiltBtn", "tiltLabel", "overlay",
       "overlayText", "overlayBtn", "meNumber", "scoreLeft", "scoreRight", "kickBtn", "goalFlash", "goalFlashText", "goalFlashWho",
-      "appVersion",
+      "appVersion", "faceThumb", "faceImg", "faceBlank", "faceHint", "faceBtn", "faceClear", "cam", "camVideo", "camShot",
+      "camError", "camCancel", "camSnap", "camRetake", "camUse",
     ].forEach((id) => (el[id] = $(id)));
     el.appVersion.textContent = `v${util.APP_VERSION}`;
 
@@ -326,6 +451,18 @@
       join(room, name);
     });
     el.leaveBtn.addEventListener("click", () => showJoin());
+
+    el.faceBtn.addEventListener("click", openCamera);
+    el.faceThumb.addEventListener("click", openCamera);
+    el.meSwatch.addEventListener("click", openCamera);
+    el.faceClear.addEventListener("click", () => saveFace(null));
+    el.camCancel.addEventListener("click", closeCamera);
+    el.camSnap.addEventListener("click", snap);
+    el.camRetake.addEventListener("click", () => showCamShot(null));
+    el.camUse.addEventListener("click", () => {
+      saveFace(el.camShot.getAttribute("src"));
+      closeCamera();
+    });
 
     el.stickArea.addEventListener("pointerdown", onPointerDown);
     el.stickArea.addEventListener("pointermove", onPointerMove);
@@ -354,6 +491,8 @@
 
   function init() {
     bind();
+    loadFace();
+    renderFace();
     util.applyTheme();
     const params = new URLSearchParams(location.search);
     const room = (params.get("room") || "").toUpperCase();

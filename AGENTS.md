@@ -12,10 +12,14 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
   unpredictable and fun with a lot of players"). Don't "fix" `RESPONSE`/dash momentum into tight controls.
 
 ## Architecture rules (keep these)
-- Classic scripts on `window.Uncinus`, no ES modules. Host load order: util → qr → net → match → render → host.
-  Controller: util → net → controller.
+- Classic scripts on `window.Uncinus`, no ES modules. Host load order: util → qr → net → face → match → render → host.
+  Controller: util → net → face → controller.
 - **The host is authoritative.** All match state lives in `js/match.js` (pure, no DOM, unit-tested); the host steps it
-  at fixed 1/120 s substeps. Phones send only `{t:"in", x, y, k}`; `sanitizeInput` clamps to the unit disc.
+  at fixed 1/120 s substeps. Phones send `{t:"in", x, y, k}` (`sanitizeInput` clamps to the unit disc) and face photos.
+- Face photos (`js/face.js`, pure, unit-tested): phone crops the square framing the oval guide (84% of the square
+  camera view), mirrors it, saves a 96 px JPEG data URL in `uncinus_face`, and sends it as `{t:"face", s, i, n, d}`
+  chunks (relay caps phone messages at 2 KB; `n: 0` clears) after every `you`, so a reloaded host gets it again.
+  Host validates with `isFaceDataUrl` (jpeg/png/webp base64 only, ≤ `FACE_MAX`) before drawing or putting it in the roster.
 - Kick is a **press counter** `k` (not a held bool) so taps between network ticks aren't lost; the first `k` seen
   only syncs. `kick()` = dash impulse + `KICK_COOLDOWN`; touching the ball during a dash adds `KICK_POWER` once.
 - Players are AABB blocks (`HALF`) vs a circle ball; player–player is circle push + velocity exchange. The ball is

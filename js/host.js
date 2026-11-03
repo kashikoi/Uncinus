@@ -3,7 +3,7 @@
   "use strict";
 
   const U = window.Uncinus;
-  const { util, match: M } = U;
+  const { util, match: M, face: F } = U;
   const ROOM_KEY = "uncinus_room";
   const KEYBOARD_ID = "keyboard";
 
@@ -13,6 +13,8 @@
     relay: util.relayUrl(),
     link: null,
     match: M.createMatch(),
+    faces: new Map(),
+    faceAssembler: F.createFaceAssembler(),
     renderer: null,
     joinOpen: true,
     keyboard: false,
@@ -43,6 +45,7 @@
     state.room = util.isRoomCode(code) ? code : util.roomCode();
     sessionStorage.setItem(ROOM_KEY, state.room);
     for (const p of [...state.match.players.values()]) if (p.id !== KEYBOARD_ID) state.match.players.delete(p.id);
+    state.faces.clear();
     if (state.link) state.link.close();
     state.link = new U.Link({
       url: `${state.relay}/room/${state.room}?role=host`,
@@ -89,11 +92,29 @@
         break;
       case "msg":
         if (msg.d && msg.d.t === "in") M.setInput(state.match, msg.from, msg.d);
+        else if (msg.d && msg.d.t === "face" && state.match.players.has(msg.from)) receiveFace(msg.from, msg.d);
         return;
       default:
         return;
     }
     renderRoster();
+  }
+
+  function receiveFace(id, chunk) {
+    const done = state.faceAssembler.accept(id, chunk);
+    if (!done) return;
+    if (!done.face) {
+      state.faces.delete(id);
+      renderRoster();
+      return;
+    }
+    const img = new Image();
+    img.onload = () => {
+      if (!state.match.players.has(id)) return;
+      state.faces.set(id, { url: done.face, img });
+      renderRoster();
+    };
+    img.src = done.face;
   }
 
   // ---------- Match events ----------
@@ -171,14 +192,20 @@
     el.scoreRight.textContent = state.match.score.right;
   }
 
+  function faceThumb(id) {
+    const f = state.faces.get(id);
+    return f && F.isFaceDataUrl(f.url) ? `<img class="chip__face" src="${f.url}" alt="" />` : "";
+  }
+
   function renderRoster() {
+    for (const id of state.faces.keys()) if (!state.match.players.has(id)) state.faces.delete(id);
     const players = [...state.match.players.values()].sort((a, b) => a.number - b.number);
     for (const team of ["left", "right"]) {
       const list = players.filter((p) => p.team === team);
       el[`roster_${team}`].innerHTML = list
         .map(
           (p) =>
-            `<li class="chip${p.connected ? "" : " is-away"}"><span class="chip__num">${p.number}</span>${util.escapeHtml(p.name)}${p.connected ? "" : " <em>away</em>"}</li>`,
+            `<li class="chip${p.connected ? "" : " is-away"}"><span class="chip__num">${p.number}</span>${faceThumb(p.id)}${util.escapeHtml(p.name)}${p.connected ? "" : " <em>away</em>"}</li>`,
         )
         .join("");
       el[`roster_${team}`].hidden = list.length === 0;
@@ -343,6 +370,7 @@
   function init() {
     bind();
     state.renderer = new U.Renderer(el.pitch);
+    state.renderer.faces = state.faces;
     state.renderer.setTheme(util.applyTheme());
     startRoom(new URLSearchParams(location.search).get("room") || sessionStorage.getItem(ROOM_KEY));
     setJoinOpen(true);

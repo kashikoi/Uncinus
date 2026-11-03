@@ -75,6 +75,7 @@
       this.trails = new Map();
       this.fx = [];
       this.rand = rng(5);
+      this.faces = null;
       this.resize();
     }
 
@@ -343,7 +344,46 @@
       ctx.lineWidth = 2;
       ctx.stroke();
 
-      // Number, then two eyes looking where the player is heading.
+      const face = this.faces && this.faces.get(p.id);
+      if (face && face.img.complete && face.img.naturalWidth) this.drawFace(ctx, p, team, face.img);
+      else this.drawEyes(ctx, p);
+      if (p.cooldown <= 0 && p.connected) {
+        ctx.strokeStyle = "rgba(255,255,255,0.55)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(p.x - HALF - 4, p.y - HALF - 4, HALF * 2 + 8, HALF * 2 + 8 + lift, 10);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // The player's photo fills the top face inside a team-colour frame, with the number as a corner badge.
+    drawFace(ctx, p, team, img) {
+      const inset = 4;
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(p.x - HALF + inset, p.y - HALF + inset, (HALF - inset) * 2, (HALF - inset) * 2, 5);
+      ctx.clip();
+      ctx.drawImage(img, p.x - HALF + inset, p.y - HALF + inset, (HALF - inset) * 2, (HALF - inset) * 2);
+      ctx.restore();
+      const bx = p.x + HALF - 5;
+      const by = p.y + HALF - 5;
+      ctx.fillStyle = team.dark;
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(bx, by, 9.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "800 12px Inter, system-ui, -apple-system, sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(String(p.number), bx, by + 1);
+    }
+
+    // Number, then two eyes looking where the player is heading.
+    drawEyes(ctx, p) {
       ctx.fillStyle = "rgba(255,255,255,0.95)";
       ctx.font = "800 20px Inter, system-ui, -apple-system, sans-serif";
       ctx.textAlign = "center";
@@ -365,14 +405,6 @@
         ctx.arc(px + fx * 1.8, py + fy * 1.8, 2.2, 0, Math.PI * 2);
         ctx.fill();
       }
-      if (p.cooldown <= 0 && p.connected) {
-        ctx.strokeStyle = "rgba(255,255,255,0.55)";
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.roundRect(p.x - HALF - 4, p.y - HALF - 4, HALF * 2 + 8, HALF * 2 + 8 + lift, 10);
-        ctx.stroke();
-      }
-      ctx.restore();
     }
 
     drawBall(ctx, b) {
