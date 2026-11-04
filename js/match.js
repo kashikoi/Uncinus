@@ -56,13 +56,11 @@
   };
   const GROW_RATE = 6; // how fast size eases toward its target (1/s)
 
-  // Timed games: two halves counting down, a dance-party halftime (teams then swap ends), and a full-time
-  // result before the next game starts by itself. Length 0 = no limit (endless play, no clock).
+  // Timed games: two halves counting down (teams swap ends at half time, straight into the second-half kickoff),
+  // "next goal wins" if it's level at the end, and a full-time result before the next game starts by itself.
+  // Length 0 = no limit (endless play, no clock).
   const GAME_LENGTHS = [0, 5, 10, 15, 30]; // minutes
-  const HALFTIME = 60; // seconds
   const FULLTIME_SHOW = 20; // seconds the result stays up
-  const DANCE_RADIUS = 230;
-  const DANCE_SPEED = 0.45; // radians per second around the centre circle
 
   const GOAL_PAUSE = 2.6;
   const DISCONNECT_GRACE = 20;
@@ -78,7 +76,7 @@
   const defends = (m, team) => ((team === "left") !== Boolean(m && m.swapped) ? "left" : "right");
   const teamAt = (m, end) => (defends(m, "left") === end ? "left" : "right");
   const kickoffFacing = (m, team) => (defends(m, team) === "left" ? 0 : Math.PI);
-  const playing = (m) => m.period === "free" || m.period === "first" || m.period === "second";
+  const playing = (m) => m.period === "free" || m.period === "first" || m.period === "second" || m.period === "golden";
   const half = (p) => HALF * (p.scale || 1);
   const mass = (p) => (p.scale || 1) ** 2;
 
@@ -94,10 +92,9 @@
       phase: "play",
       phaseTime: 0,
       length: 0, // seconds for the whole game; 0 = no limit
-      period: "free", // free | pre | first | halftime | second | full
+      period: "free", // free | pre | first | second | golden (next goal wins) | full
       clock: 0, // seconds left in the current period
-      swapped: false, // teams swap ends at halftime
-      danceAngle: 0,
+      swapped: false, // teams swap ends at half time
       score: { left: 0, right: 0 },
       players: new Map(),
       ball: { x: CX, y: CY, vx: 0, vy: 0, spin: 0, lastTouch: null },
@@ -275,18 +272,18 @@
         if (m.phase !== "play") break;
         m.clock = Math.max(0, m.clock - dt);
         if (m.clock > 0) break;
-        clearPowerUps(m);
-        Object.assign(m.ball, { x: CX, y: CY, vx: 0, vy: 0, lastTouch: null });
-        if (m.period === "first") setPeriod(m, "halftime", HALFTIME);
-        else setPeriod(m, "full", FULLTIME_SHOW);
-        break;
-      case "halftime":
-        m.clock = Math.max(0, m.clock - dt);
-        m.danceAngle += DANCE_SPEED * dt;
-        if (m.clock > 0) break;
-        m.swapped = !m.swapped;
-        resetKickoff(m);
-        setPeriod(m, "second", m.length / 2);
+        if (m.period === "first") {
+          // Half time: swap ends and kick off the second half straight away.
+          clearPowerUps(m);
+          m.swapped = !m.swapped;
+          resetKickoff(m);
+          setPeriod(m, "second", m.length / 2);
+        } else if (m.score.left === m.score.right) {
+          setPeriod(m, "golden", 0);
+        } else {
+          Object.assign(m.ball, { x: CX, y: CY, vx: 0, vy: 0, lastTouch: null });
+          endGame(m);
+        }
         break;
       case "full":
         m.clock = Math.max(0, m.clock - dt);
@@ -295,18 +292,10 @@
     }
   }
 
-  // Halftime show: everyone conga-dances around the centre circle.
-  function dance(m, p, i, n, dt) {
-    const a = m.danceAngle + (i / Math.max(1, n)) * Math.PI * 2;
-    const tx = CX + Math.cos(a) * DANCE_RADIUS;
-    const ty = CY + Math.sin(a) * DANCE_RADIUS * 0.8;
-    const k = Math.min(1, 3 * dt);
-    p.vx = (tx - p.x) * 3;
-    p.vy = (ty - p.y) * 3;
-    p.x += (tx - p.x) * k;
-    p.y += (ty - p.y) * k;
-    p.facing = a + Math.PI / 2;
-    p.dash = 0;
+  // The winning golden goal stays in the net for its celebration; full time otherwise resets the ball first.
+  function endGame(m) {
+    clearPowerUps(m);
+    setPeriod(m, "full", FULLTIME_SHOW);
   }
 
   function collidePlayerBall(m, p) {
@@ -480,6 +469,7 @@
     });
     m.phase = "goal";
     m.phaseTime = 0;
+    if (m.period === "golden") endGame(m);
   }
 
   const starGap = (m) => STAR_GAP_MIN + m.rand() * (STAR_GAP_MAX - STAR_GAP_MIN);
@@ -598,8 +588,6 @@
     m.phaseTime += dt;
     const k = Math.min(1, RESPONSE * dt);
     stepPeriod(m, dt);
-    const dancing = m.period === "halftime";
-    const dancers = dancing ? [...m.players.values()].sort((a, b) => a.joinedAt - b.joinedAt) : [];
 
     for (const p of [...m.players.values()]) {
       if (!p.connected) {
@@ -625,10 +613,6 @@
       p.scale += (target - p.scale) * Math.min(1, GROW_RATE * dt);
       if (Math.abs(target - p.scale) < 0.002) p.scale = target;
       p.dash = Math.max(0, p.dash - dt);
-      if (dancing) {
-        dance(m, p, dancers.indexOf(p), dancers.length, dt);
-        continue;
-      }
       // While dashing, momentum wins; otherwise ease toward the stick (sluggish on purpose).
       const kk = p.dash > 0 ? k * 0.15 : k;
       p.vx += (p.input.x * MAX_SPEED - p.vx) * kk;
@@ -655,7 +639,6 @@
     m.powered = list.some((p) => p.star > 0);
     stepStar(m, dt, list);
     for (const kind of Object.keys(ITEMS)) stepItem(m, dt, list, kind);
-    if (dancing) return;
     for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) collidePlayers(list[i], list[j]);
 
     // Substep the ball so fast shots don't tunnel through players or posts.
@@ -711,7 +694,6 @@
     DISCONNECT_GRACE,
     TEAMS,
     GAME_LENGTHS,
-    HALFTIME,
     FULLTIME_SHOW,
     defends,
     teamAt,

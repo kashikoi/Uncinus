@@ -1565,7 +1565,7 @@ body.is-flower .me {
 .period-banner {
   position: fixed;
   left: 50%;
-  top: 30%;
+  top: 34%;
   transform: translate(-50%, -50%);
   text-align: center;
   pointer-events: none;
@@ -1574,7 +1574,8 @@ body.is-flower .me {
 
 .period-banner__word {
   font-weight: 900;
-  font-size: clamp(3.5rem, 10vw, 8rem);
+  font-size: clamp(3rem, 8vw, 6.5rem);
+  white-space: nowrap;
   letter-spacing: -0.02em;
   line-height: 0.95;
   color: #fff;
@@ -1633,12 +1634,6 @@ body.is-flower .me {
   pointer-events: none;
 }
 
-.period-screen.is-halftime {
-  background: linear-gradient(135deg, #a855f7, #ec4899, #f59e0b);
-  background-size: 300% 300%;
-  animation: party 3s ease-in-out infinite;
-}
-
 .period-screen.is-won {
   background: linear-gradient(135deg, #fde047, #f59e0b);
   color: #422006;
@@ -1658,10 +1653,6 @@ body.is-flower .me {
   line-height: 1;
 }
 
-.period-screen.is-halftime .period-screen__title {
-  animation: wiggle 0.6s ease-in-out infinite alternate;
-}
-
 .period-screen__sub {
   font-weight: 700;
   font-size: 1.2rem;
@@ -1675,27 +1666,23 @@ body.is-flower .me {
   opacity: 0.85;
 }
 
-@keyframes party {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-@keyframes wiggle {
-  from {
-    transform: rotate(-6deg) scale(1);
-  }
-  to {
-    transform: rotate(6deg) scale(1.08);
-  }
-}
-
 .goal-flash.is-swap {
   background: linear-gradient(135deg, #22c55e, #0ea5e9);
   color: #fff;
+  padding: 0 24px;
+  text-align: center;
+}
+
+.match-clock.is-golden {
+  color: #422006;
+  background: linear-gradient(90deg, #fde047, #f59e0b);
+  font-family: var(--font-ui);
+  font-weight: 800;
+}
+
+.goal-flash.is-golden {
+  background: linear-gradient(135deg, #fde047, #f59e0b);
+  color: #422006;
   padding: 0 24px;
   text-align: center;
 }

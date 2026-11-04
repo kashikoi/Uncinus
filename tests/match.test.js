@@ -437,37 +437,28 @@ test("a timed game waits for the first player, then counts each half down", () =
   assert.deepEqual(periods(m), ["first"]);
 });
 
-test("halftime: a minute of dancing, then teams swap ends for the second half", () => {
+test("half time: teams swap ends straight into the second-half kickoff", () => {
   const m = M.createMatch();
   M.setGameLength(m, 5);
   const ann = M.addPlayer(m, "aaaaaa", "Ann"); // left team, defends the left end
   const bob = M.addPlayer(m, "bbbbbb", "Bob");
   assert.equal(M.defends(m, "left"), "left");
-  runPlay(m, 150.1);
-  assert.equal(m.period, "halftime");
-  assert.ok(Math.abs(m.clock - M.HALFTIME) < 0.2);
-  M.setInput(m, ann.id, { x: -1, y: 0 });
-  runPlay(m, 5);
-  for (const p of [ann, bob]) {
-    const r = Math.hypot(p.x - M.CX, (p.y - M.CY) / 0.8);
-    assert.ok(Math.abs(r - 230) < 15, `${p.name} is dancing round the centre circle (${r})`);
-  }
-  assert.deepEqual([m.ball.x, m.ball.y], [M.CX, M.CY], "ball rests on the spot");
-  M.setInput(m, ann.id, { x: 0, y: 0 });
   let t = 0;
-  for (; m.period === "halftime" && t < M.HALFTIME; t += 1 / 60) M.step(m, 1 / 60);
-  assert.equal(m.period, "second");
+  for (; m.period !== "second" && t < 200; t += 1 / 60) M.step(m, 1 / 60);
+  assert.ok(Math.abs(t - 150) < 0.1, `second half starts right at 2:30 (${t})`);
   assert.ok(m.swapped);
+  assert.ok(Math.abs(m.clock - 150) < 0.05);
   assert.equal(M.defends(m, "left"), "right", "blue now defends the right end");
   assert.ok(ann.x > M.CX && bob.x < M.CX, "kickoff on the new halves");
-  assert.deepEqual(periods(m), ["pre", "first", "halftime", "second"]);
+  assert.deepEqual([m.ball.x, m.ball.y], [M.CX, M.CY]);
+  assert.deepEqual(periods(m), ["pre", "first", "second"]);
 });
 
 test("after the swap, goals still count for the team that attacked", () => {
   const m = M.createMatch();
   M.setGameLength(m, 5);
   const ann = M.addPlayer(m, "aaaaaa", "Ann"); // left team
-  runPlay(m, 150.1 + M.HALFTIME + 0.1);
+  runPlay(m, 150.1);
   assert.equal(m.period, "second");
   // Blue now attacks the LEFT goal.
   Object.assign(m.ball, { x: M.PITCH.L + 60, y: M.CY, vx: -700, vy: 0, lastTouch: ann.id });
@@ -494,7 +485,7 @@ test("full time shows the result, then a new game starts by itself", () => {
   runPlay(m, 1);
   Object.assign(m.ball, { x: M.PITCH.R - 60, y: M.CY, vx: 700, vy: 0, lastTouch: ann.id });
   runPlay(m, 0.3 + M.GOAL_PAUSE);
-  runPlay(m, 150 + M.HALFTIME + 150);
+  runPlay(m, 150 + 150);
   assert.equal(m.period, "full");
   const full = M.drainEvents(m).filter((e) => e.type === "period").at(-1);
   assert.deepEqual(full.score, { left: 1, right: 0 });
@@ -515,4 +506,37 @@ test("setGameLength only accepts the offered lengths", () => {
   assert.equal(m.period, "free");
   M.setGameLength(m, 30);
   assert.equal(m.length, 1800);
+});
+
+test("level at the end: next goal wins, with no clock", () => {
+  const m = M.createMatch();
+  M.setGameLength(m, 5);
+  const ann = M.addPlayer(m, "aaaaaa", "Ann");
+  M.addPlayer(m, "bbbbbb", "Bob");
+  runPlay(m, 300.2);
+  assert.equal(m.period, "golden");
+  runPlay(m, 120);
+  assert.equal(m.period, "golden", "no time limit until someone scores");
+  M.drainEvents(m);
+  // Blue attacks the left goal in the second half.
+  Object.assign(m.ball, { x: M.PITCH.L + 60, y: M.CY, vx: -700, vy: 0, lastTouch: ann.id });
+  runPlay(m, 0.3);
+  assert.equal(m.period, "full");
+  assert.deepEqual(m.score, { left: 1, right: 0 });
+  const evs = M.drainEvents(m);
+  assert.ok(evs.findIndex((e) => e.type === "goal") < evs.findIndex((e) => e.type === "period" && e.period === "full"));
+  assert.deepEqual(evs.find((e) => e.period === "full").score, { left: 1, right: 0 });
+  runPlay(m, M.FULLTIME_SHOW + 0.1);
+  assert.equal(m.period, "first", "then a new game");
+});
+
+test("not level at the end: straight to full time", () => {
+  const m = M.createMatch();
+  M.setGameLength(m, 5);
+  const ann = M.addPlayer(m, "aaaaaa", "Ann");
+  runPlay(m, 1);
+  Object.assign(m.ball, { x: M.PITCH.R - 60, y: M.CY, vx: 700, vy: 0, lastTouch: ann.id });
+  runPlay(m, 0.3 + M.GOAL_PAUSE);
+  runPlay(m, 300);
+  assert.equal(m.period, "full");
 });

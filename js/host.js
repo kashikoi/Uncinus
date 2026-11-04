@@ -10,7 +10,9 @@
   const MAYHEM_KEY = "uncinus_mayhem";
   const LENGTH_KEY = "uncinus_length";
   const DEFAULT_LENGTH = 10;
-  const PERIOD_LABEL = { pre: "Waiting for players", first: "1st half", halftime: "Halftime", second: "2nd half", full: "Full time" };
+  const PERIOD_LABEL = {
+    pre: "Waiting for players", first: "1st half", second: "2nd half", golden: "⚡ Next goal wins", full: "Full time",
+  };
 
   const el = {};
   const state = {
@@ -88,7 +90,7 @@
   function sendYou(p) {
     const team = M.TEAMS[p.team];
     // `pick` tells the phone it may choose its colour; it asks once per join and lets players switch later.
-    // `sides` says which end each colour defends right now (they swap at halftime).
+    // `sides` says which end each colour defends right now (they swap at half time).
     sendTo(p.id, {
       t: "you", name: p.name, team: p.team, teamName: team.name, color: team.color, number: p.number,
       pick: state.teamPick, counts: teamCounts(),
@@ -200,9 +202,9 @@
 
   function onPeriod(ev) {
     renderScore();
-    // Ends can change (halftime swap, or back to normal for a new game): refresh every phone's sides before
+    // Ends can change (half-time swap, or back to normal for a new game): refresh every phone's sides before
     // announcing the period, so "you now attack ←" is right.
-    if (ev.period !== "halftime" && ev.period !== "full") for (const p of realPlayers()) sendYou(p);
+    if (ev.period !== "full") for (const p of realPlayers()) sendYou(p);
     broadcast(periodMessage());
     const { period, score } = ev;
     if (period === "first") {
@@ -211,16 +213,28 @@
     } else if (period === "second") {
       el.periodBanner.hidden = true;
       showStarToast("🔄 2nd half — teams swapped ends!");
-    } else if (period === "halftime") {
-      showPeriodBanner("HALFTIME", "💃 Dance break! Teams swap ends for the 2nd half.", "#fde047");
+    } else if (period === "golden") {
+      showPeriodBanner("NEXT GOAL WINS!", `⚡ All square at ${score.left}–${score.right} — no time limit now.`, "#fde047");
+      setTimeout(() => {
+        if (state.match.period === "golden") el.periodBanner.hidden = true;
+      }, 3500);
     } else if (period === "full") {
       const winner = score.left === score.right ? null : score.left > score.right ? "left" : "right";
-      showPeriodBanner(
-        "FULL TIME",
-        winner ? `<span class="team-chip team-chip--${winner}"></span> wins ${Math.max(score.left, score.right)}–${Math.min(score.left, score.right)}!` : `It's a draw, ${score.left}–${score.right}`,
-        winner ? M.TEAMS[winner].color : "#ffffff",
-        true,
-      );
+      const show = () =>
+        showPeriodBanner(
+          "FULL TIME",
+          winner ? `<span class="team-chip team-chip--${winner}"></span> wins ${Math.max(score.left, score.right)}–${Math.min(score.left, score.right)}!` : `It's a draw, ${score.left}–${score.right}`,
+          winner ? M.TEAMS[winner].color : "#ffffff",
+          true,
+        );
+      // After a golden goal, let the GOAL! celebration finish first.
+      if (el.goalBanner.hidden) show();
+      else {
+        el.periodBanner.hidden = true;
+        setTimeout(() => {
+          if (state.match.period === "full") show();
+        }, (M.GOAL_PAUSE - 0.2) * 1000);
+      }
     } else {
       el.periodBanner.hidden = true;
     }
@@ -234,6 +248,7 @@
     if (isHtml) el.periodSub.innerHTML = sub;
     else el.periodSub.textContent = sub;
     el.periodBanner.hidden = false;
+    el.starToast.hidden = true;
     el.periodBanner.classList.remove("is-in");
     void el.periodBanner.offsetWidth;
     el.periodBanner.classList.add("is-in");
@@ -243,14 +258,15 @@
   function renderClock(force) {
     const m = state.match;
     const timed = m.period !== "free";
-    const text = !timed ? "" : m.period === "pre" ? PERIOD_LABEL.pre : `${PERIOD_LABEL[m.period]} · ${fmtClock(m.clock)}`;
+    const untimed = m.period === "pre" || m.period === "golden";
+    const text = !timed ? "" : untimed ? PERIOD_LABEL[m.period] : `${PERIOD_LABEL[m.period]} · ${fmtClock(m.clock)}`;
     if (text === state.clockShown && !force) return;
     state.clockShown = text;
     el.matchClock.hidden = !timed;
     el.matchClock.textContent = text;
     el.matchClock.classList.toggle("is-low", (m.period === "first" || m.period === "second") && m.clock <= 30);
-    if (m.period === "halftime") el.periodCount.textContent = `2nd half in ${fmtClock(m.clock)}`;
-    else if (m.period === "full") el.periodCount.textContent = `Next game in ${fmtClock(m.clock)}`;
+    el.matchClock.classList.toggle("is-golden", m.period === "golden");
+    el.periodCount.textContent = m.period === "full" ? `Next game in ${fmtClock(m.clock)}` : "";
     if (timed && !force) broadcast({ t: "clock", period: m.period, clock: Math.ceil(m.clock) });
   }
 

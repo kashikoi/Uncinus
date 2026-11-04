@@ -33,9 +33,10 @@ outside the net does not score. Goals pop confetti on the big screen and flash e
 **Reset score** and **New room**.
 
 **Timed games** (Settings → Game length: no limit, 5, 10, 15 or 30 min; default 10). The clock starts when the first
-player joins and each half counts down. Halftime is a one-minute dance party — everyone conga-dances round the centre
-circle — and then the teams swap ends. At full time the result shows on the big screen and every phone (won / lost /
-draw), and a new game kicks off by itself 20 seconds later. Goals pause the clock. Settings → **New game** restarts.
+player joins and each half counts down; at half time the teams swap ends and kick off the second half straight away.
+If it's level when time runs out, it's **next goal wins** with no time limit. At full time the result shows on the
+big screen and every phone (won / lost), and a new game kicks off by itself 20 seconds later. Goals pause the clock.
+Settings → **New game** restarts.
 
 **Mayhem mode** (Settings → Rules): about once a minute a star drifts onto the pitch. Whoever grabs it is invincible
 for 10 seconds — they ghost straight through other players and nobody else can touch the ball, so they can dribble

@@ -98,7 +98,7 @@
 
     // Effects driven by match events (called by the host as it drains them).
     onEvent(ev, m) {
-      if (ev.type === "period" && (ev.period === "halftime" || ev.period === "full")) {
+      if (ev.type === "period" && ev.period === "full") {
         for (let i = 0; i < 120; i++) {
           const a = this.rand() * Math.PI * 2;
           const sp = 150 + this.rand() * 450;
@@ -204,12 +204,6 @@
         const s = p.scale || 1;
         ctx.save();
         ctx.translate(p.x, p.y);
-        if (m.period === "halftime") {
-          // Dance moves: hop, wiggle and the odd spin.
-          const beat = this.t * 7 + p.number * 1.7 + (p.team === "left" ? 0 : Math.PI);
-          ctx.translate(0, -Math.abs(Math.sin(beat)) * 16);
-          ctx.rotate(Math.sin(beat * 0.5) * 0.35 + (Math.sin(this.t * 0.9 + p.number) > 0.93 ? (this.t * 9) % (Math.PI * 2) : 0));
-        }
         ctx.scale(s, s);
         ctx.translate(-p.x, -p.y);
         if (p.flower > 0) this.drawFlowerAura(ctx, p);
@@ -221,7 +215,6 @@
       if (m.star) this.drawStar(ctx, m.star);
       this.drawBall(ctx, m.ball);
       this.drawNets(ctx, pal, "front", m);
-      if (m.period === "halftime") this.drawNotes(ctx, m);
       this.drawFx(ctx, dt);
       if (pal.flood > 0) this.drawFloodlights(ctx, pal);
       for (const p of players) this.drawTag(ctx, pal, p);
@@ -493,21 +486,6 @@
       ctx.beginPath();
       ctx.roundRect(p.x - FRAME.half, top, FRAME.half * 2, height, 10);
       ctx.stroke();
-      ctx.restore();
-    }
-
-    // Floating music notes over the halftime dance.
-    drawNotes(ctx, m) {
-      ctx.save();
-      ctx.font = "700 34px Inter, system-ui, -apple-system, sans-serif";
-      ctx.textAlign = "center";
-      for (let i = 0; i < 10; i++) {
-        const life = (this.t * 0.35 + i / 10) % 1;
-        const a = i * 2.4 + m.danceAngle;
-        ctx.globalAlpha = Math.sin(life * Math.PI) * 0.9;
-        ctx.fillStyle = ["#ffffff", "#fde047", "#38bdf8", "#fb923c"][i % 4];
-        ctx.fillText(i % 2 ? "♪" : "♫", CX + Math.cos(a) * 340, CY + Math.sin(a) * 240 - life * 80);
-      }
       ctx.restore();
     }
 
