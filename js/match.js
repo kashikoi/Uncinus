@@ -55,6 +55,7 @@
     flower: { field: "flower", r: FLOWER_R, life: FLOWER_LIFE, power: FLOWER_POWER, gapMin: FLOWER_GAP_MIN, gapMax: FLOWER_GAP_MAX },
   };
   const GROW_RATE = 6; // how fast size eases toward its target (1/s)
+  const BUMP_SPEED = 140; // closing speed (px/s) for a player–player crash to count as a "bump" (oof!)
 
   // Timed games: two halves counting down (teams swap ends at half time, straight into the second-half kickoff),
   // "next goal wins" if it's level at the end, and a full-time result before the next game starts by itself.
@@ -346,8 +347,8 @@
   }
 
   // Circle push + velocity exchange, weighted by mass so a big player shoves others around.
-  // Star players are ghosts: they pass straight through everyone.
-  function collidePlayers(a, c) {
+  // Star players are ghosts: they pass straight through everyone. Hard hits emit a "bump" event.
+  function collidePlayers(m, a, c) {
     if (a.star > 0 || c.star > 0) return;
     const r = (half(a) + half(c)) * 0.95;
     const dx = c.x - a.x;
@@ -365,6 +366,7 @@
     c.y += ny * overlap * (ma / (ma + mc));
     const vn = (c.vx - a.vx) * nx + (c.vy - a.vy) * ny;
     if (vn < 0) {
+      if (vn < -BUMP_SPEED) m.events.push({ type: "bump", a: a.id, b: c.id, speed: -vn, x: (a.x + c.x) / 2 });
       const j = (-1.3 * vn) / (1 / ma + 1 / mc);
       a.vx -= (j / ma) * nx;
       a.vy -= (j / ma) * ny;
@@ -639,7 +641,7 @@
     m.powered = list.some((p) => p.star > 0);
     stepStar(m, dt, list);
     for (const kind of Object.keys(ITEMS)) stepItem(m, dt, list, kind);
-    for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) collidePlayers(list[i], list[j]);
+    for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) collidePlayers(m, list[i], list[j]);
 
     // Substep the ball so fast shots don't tunnel through players or posts.
     const sub = Math.max(1, Math.ceil((Math.hypot(m.ball.vx, m.ball.vy) * dt) / (BALL_R * 0.8)));
@@ -692,6 +694,7 @@
     FLOWER_GAP_MIN,
     FLOWER_GAP_MAX,
     DISCONNECT_GRACE,
+    BUMP_SPEED,
     TEAMS,
     GAME_LENGTHS,
     FULLTIME_SHOW,

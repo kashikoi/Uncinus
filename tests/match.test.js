@@ -181,6 +181,25 @@ test("players shove each other and stay on the pitch", () => {
   assert.ok(a.x >= M.PITCH.L + M.HALF && a.y >= M.PITCH.T + M.HALF);
 });
 
+test("players crashing into each other emit a bump; gentle leaning doesn't", () => {
+  const m = M.createMatch();
+  const a = M.addPlayer(m, "aaaaaa", "A");
+  const b = M.addPlayer(m, "bbbbbb", "B");
+  Object.assign(a, { x: M.CX - 30, y: M.CY + 200, vx: 0, vy: 0 });
+  Object.assign(b, { x: M.CX + 30, y: M.CY + 200, vx: 0, vy: 0 });
+  M.setInput(m, "aaaaaa", { x: 0.2, y: 0 });
+  run(m, 1);
+  assert.equal(M.drainEvents(m).filter((e) => e.type === "bump").length, 0);
+  Object.assign(a, { x: M.CX - 200, vx: 330 });
+  Object.assign(b, { x: M.CX + 200, vx: -330 });
+  M.setInput(m, "aaaaaa", { x: 1, y: 0 });
+  M.setInput(m, "bbbbbb", { x: -1, y: 0 });
+  run(m, 1);
+  const bumps = M.drainEvents(m).filter((e) => e.type === "bump");
+  assert.ok(bumps.length >= 1);
+  assert.deepEqual([bumps[0].a, bumps[0].b].sort(), ["aaaaaa", "bbbbbb"]);
+});
+
 test("fast balls don't tunnel through players", () => {
   const m = M.createMatch();
   const p = M.addPlayer(m, "aaaaaa", "Wall");

@@ -14,7 +14,7 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
   unpredictable and fun with a lot of players"). Don't "fix" `RESPONSE`/dash momentum into tight controls.
 
 ## Architecture rules (keep these)
-- Classic scripts on `window.Uncinus`, no ES modules. Host load order: util → qr → net → face → match → render → host.
+- Classic scripts on `window.Uncinus`, no ES modules. Host load order: util → qr → net → face → match → render → sound → host.
   Controller: util → net → face → controller.
 - **The host is authoritative.** All match state lives in `js/match.js` (pure, no DOM, unit-tested); the host steps it
   at fixed 1/120 s substeps. Phones send `{t:"in", x, y, k}` (`sanitizeInput` clamps to the unit disc) and face photos.
@@ -59,6 +59,11 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
 - Relay: one Durable Object per room code, max 12 players, `bye` before every server close (4001/4004/4009/4400).
 - Protocol: host→player `you{name,team,teamName,color,number,pick,counts,sides}`, `period`, `clock`, `score{left,right}`, `goal{team,scorerId,
   scorerName,ownGoal,score}`, `star{on,secs}`, `big{on,secs}`, `flower{on,secs,points}`, `full`; `goal` also has `points`; relay→player `welcome`, `host-left`, `host-back`.
+- Sound (`js/sound.js`, host only, loaded after render): all effects are synthesised with WebAudio, no audio files;
+  the 10…1 countdown uses `speechSynthesis`. `host.playSound` maps match events → sounds: `dash` whoosh, `bump` (new
+  match event when two players hit at > `BUMP_SPEED`) → an "oof" per player (per-player pitch, `OOF_GAP` debounce),
+  `goal` crowd, `shroom-get` grow, `star-get/end` star theme loop, `flower-get` fanfare, `period` second/golden/full
+  air horn. Audio unlocks on the first click/key; the toolbar 🔊 button / `M` toggles it (`uncinus_sound`).
 - `[hidden] { display:none !important }` is required.
 
 ## Testing

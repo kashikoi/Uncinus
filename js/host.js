@@ -3,7 +3,7 @@
   "use strict";
 
   const U = window.Uncinus;
-  const { util, match: M, face: F } = U;
+  const { util, match: M, face: F, sound: S } = U;
   const ROOM_KEY = "uncinus_room";
   const KEYBOARD_ID = "keyboard";
   const TEAM_PICK_KEY = "uncinus_team_pick";
@@ -31,6 +31,8 @@
     bannerTimer: null,
     starTimer: null,
     clockShown: "",
+    countSaid: null,
+    soundWasLocked: false,
     teamPick: false,
   };
 
@@ -157,6 +159,7 @@
   function handleEvents() {
     for (const ev of M.drainEvents(state.match)) {
       state.renderer.onEvent(ev, state.match);
+      playSound(ev);
       if (ev.type === "goal") {
         renderScore();
         broadcast({ t: "goal", team: ev.team, scorerId: ev.scorerId, scorerName: ev.scorerName, ownGoal: ev.ownGoal, points: ev.points, score: ev.score });
@@ -191,6 +194,52 @@
         sendTo(ev.id, { t: "flower", on: false });
       }
     }
+  }
+
+  // ---------- Sound ----------
+  const panAt = (x) => (x - M.CX) / (M.W / 2);
+  const seedOf = (id) => [...String(id)].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7);
+
+  function playSound(ev) {
+    const m = state.match;
+    if (ev.type === "dash") {
+      const p = m.players.get(ev.id);
+      S.whoosh(p ? panAt(p.x) * 0.7 : 0);
+    } else if (ev.type === "bump") {
+      for (const id of [ev.a, ev.b]) {
+        const p = m.players.get(id);
+        S.oof(id, p ? panAt(p.x) * 0.7 : 0, seedOf(id));
+      }
+    } else if (ev.type === "goal") S.crowd();
+    else if (ev.type === "shroom-get") S.grow();
+    else if (ev.type === "flower-get") S.fanfare();
+    else if (ev.type === "star-get") S.starOn(M.STAR_POWER);
+    else if (ev.type === "star-end") S.starOff();
+    else if (ev.type === "period") {
+      state.countSaid = null;
+      // A half (or the whole game) just ran out of time.
+      if (ev.period === "second" || ev.period === "golden" || ev.period === "full") S.airHorn();
+    }
+  }
+
+  // Count the last 10 seconds of each half out loud.
+  function soundClock() {
+    const m = state.match;
+    if (m.period !== "first" && m.period !== "second") return;
+    const s = Math.ceil(m.clock);
+    if (s >= 1 && s <= 10 && s !== state.countSaid) {
+      state.countSaid = s;
+      S.count(s);
+    }
+  }
+
+  function renderSoundBtn() {
+    const on = S.enabled;
+    el.soundBtn.classList.toggle("is-locked", S.locked());
+    el.soundBtn.setAttribute("aria-pressed", String(on));
+    el.soundBtn.title = !on ? "Sound off (M)" : S.locked() ? "Click anywhere to turn on sound" : "Sound on (M)";
+    el.soundOn.hidden = !on;
+    el.soundOff.hidden = on;
   }
 
   function periodMessage() {
@@ -504,6 +553,7 @@
       remaining -= h;
     }
     handleEvents();
+    soundClock();
     renderClock();
     if (state.match.players.size !== before) renderRoster();
     state.renderer.render(state.match, dt);
@@ -514,7 +564,7 @@
     [
       "pitch", "status", "statusText", "kbBtn", "fsBtn", "settingsBtn", "joinCard", "joinMini", "joinClose", "qr", "miniQr",
       "roomCode", "miniRoom", "joinUrl", "joinLink", "emptyHint", "banner", "bannerText", "bannerBtn", "settings",
-      "themePicker", "relayInput", "relaySave", "relayReset", "relayError", "newRoomBtn", "resetBtn", "version", "appVersion", "settingsClose",
+      "soundBtn", "soundOn", "soundOff", "themePicker", "relayInput", "relaySave", "relayReset", "relayError", "newRoomBtn", "resetBtn", "version", "appVersion", "settingsClose",
       "scoreLeft", "scoreRight", "goalBanner", "goalWho", "teamPickToggle", "mayhemToggle", "starToast", "goalWord", "matchClock", "periodBanner",
       "periodWord", "periodSub", "periodCount", "lengthPicker",
     ].forEach((id) => (el[id] = $(id)));
@@ -528,6 +578,11 @@
       if (document.fullscreenElement) document.exitFullscreen();
       else document.documentElement.requestFullscreen().catch(() => {});
     });
+    // A click that just unlocked audio shouldn't also mute it.
+    el.soundBtn.addEventListener("click", () => {
+      if (!state.soundWasLocked) S.setEnabled(!S.enabled);
+    });
+    S.onChange(renderSoundBtn);
     el.settingsBtn.addEventListener("click", openSettings);
     el.settingsClose.addEventListener("click", () => el.settings.close());
     el.joinClose.addEventListener("click", () => setJoinOpen(false));
@@ -564,6 +619,7 @@
     window.addEventListener("keydown", (ev) => {
       if (ev.target.closest && ev.target.closest("input, textarea, dialog")) return;
       if (ev.code === "KeyK" && !ev.metaKey && !ev.ctrlKey) toggleKeyboard();
+      if (ev.code === "KeyM" && !ev.metaKey && !ev.ctrlKey && !state.soundWasLocked) S.setEnabled(!S.enabled);
       if (state.keyboard && GAME_KEYS.has(ev.code)) {
         if (ev.code === "Space" && !ev.repeat) state.keyboardKicks++;
         state.keys.add(ev.code);
@@ -575,6 +631,13 @@
     window.addEventListener("resize", () => state.renderer.resize());
     document.addEventListener("visibilitychange", keepAwake);
     document.addEventListener("pointerdown", keepAwake, { once: true });
+    // Browsers only start audio after a click or key press on the page.
+    for (const type of ["pointerdown", "keydown"]) {
+      document.addEventListener(type, () => {
+        state.soundWasLocked = S.locked();
+        S.unlock();
+      }, true);
+    }
   }
 
   function init() {
@@ -587,6 +650,7 @@
     startRoom(new URLSearchParams(location.search).get("room") || sessionStorage.getItem(ROOM_KEY));
     setJoinOpen(true);
     renderScore();
+    renderSoundBtn();
     keepAwake();
     requestAnimationFrame(frame);
     U.host = state;

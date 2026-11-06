@@ -46,6 +46,11 @@ for 12 seconds and shove everyone around. Grab a power flower and, for 20 second
 Which way? Each goal (net, frame and end line) is painted in the colour of the team **defending** it, and big chevrons in each half point the way that team attacks. Each
 phone also shows a mini pitch: your goal says *Defend*, the other one pulses *Score*.
 
+Sound plays on the Mac: a whoosh on every kick, an "oof!" from each player in a crash, the crowd going wild on
+goals, a growing warble for the mushroom, a hyper theme while the star lasts, a fanfare for the flower, a spoken
+"10! 9! 8!…" countdown at the end of each half and an air horn when time's up. Browsers keep audio off until you
+click or press a key on the page (the 🔊 button pulses until then); toggle it with that button or <kbd>M</kbd>.
+
 No phone handy? Press <kbd>K</kbd> on the Mac to play with the arrow keys / WASD and Space to kick.
 
 Up to 12 players. If a phone locks or drops, its player stands faded ("away") for 20 seconds before leaving;

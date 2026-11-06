@@ -211,6 +211,17 @@ kbd {
   border-color: transparent;
 }
 
+.icon-btn.is-locked {
+  animation: sound-nudge 1.6s ease-in-out infinite;
+}
+
+@keyframes sound-nudge {
+  50% {
+    background: var(--accent);
+    color: var(--accent-ink);
+  }
+}
+
 /* ---------- Brand ---------- */
 .brand {
   display: flex;
