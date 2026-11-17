@@ -2,13 +2,21 @@
 (function (root) {
   "use strict";
 
-  const APP_VERSION = "2026.11.17.5";
+  const APP_VERSION = "2026.11.17.6";
   const DEFAULT_RELAY = "wss://uncinus-relay.nimbus-sync.workers.dev";
   const RELAY_KEY = "uncinus_relay";
   const THEME_KEY = "uncinus_theme";
   const ACTIVE_THEME_KEY = "uncinus_active_theme";
   const THEMES = ["day", "twilight", "night"];
   const ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  // Room codes go up on an office TV: never show one that contains any of these (the alphabet has no I or O, which
+  // already rules out most). Common letter-swaps (U↔V, K↔C, X for CK) are listed too.
+  const BLOCKED_ROOM_WORDS = [
+    "ANAL", "ANUS", "ARSE", "ASS", "BUTT", "CRAP", "CUM", "CUNT", "DAMN", "DYKE", "FAG", "FAP", "FCK", "FFS", "FUC", "FUK",
+    "FUQ", "FVCK", "FUX", "GAY", "HELL", "HUMP", "JEW", "JERK", "KKK", "KUNT", "KYS", "NUDE", "PEE", "PERV", "PMS", "PUKE",
+    "PUSY", "PUTA", "PUTZ", "RAPE", "RAPY", "SEX", "SHAG", "SHT", "SLUT", "SMUT", "STFU", "SUCK", "SUX", "TURD", "TWAT",
+    "VAG", "WANK", "WTF", "XXX", "CVNT", "SLVT", "DMN", "FKN", "FML", "NSFW", "PRN", "PRNS", "THC", "METH",
+  ];
 
   function isRelayUrl(value) {
     return /^wss?:\/\/[^\s/?#]+(\/[^\s?#]*)?$/i.test(String(value || ""));
@@ -43,8 +51,16 @@
 
   function roomCode() {
     const bytes = new Uint8Array(4);
-    crypto.getRandomValues(bytes);
-    return Array.from(bytes, (b) => ROOM_ALPHABET[b % ROOM_ALPHABET.length]).join("");
+    for (;;) {
+      crypto.getRandomValues(bytes);
+      const code = Array.from(bytes, (b) => ROOM_ALPHABET[b % ROOM_ALPHABET.length]).join("");
+      if (isCleanRoomCode(code)) return code;
+    }
+  }
+
+  function isCleanRoomCode(code) {
+    const s = String(code || "").toUpperCase();
+    return !BLOCKED_ROOM_WORDS.some((w) => s.includes(w));
   }
 
   function isRoomCode(value) {
@@ -94,6 +110,7 @@
     randomId,
     roomCode,
     isRoomCode,
+    isCleanRoomCode,
     escapeHtml,
     getThemePref,
     activeTheme,

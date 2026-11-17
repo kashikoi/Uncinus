@@ -63,6 +63,8 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
   `M.teamAt(m, end)` (goals, formation, renderer colours). Events `period{period,clock,score}`; host→player
   `period{…}`, `clock{period,clock}` once per second, and `you.sides` (end each colour defends) is re-sent before
   each period message so phones never show a stale direction.
+- Room codes: 4 letters from `ROOM_ALPHABET` (no I/O); `util.roomCode` re-rolls any code containing a
+  `BLOCKED_ROOM_WORDS` entry (`isCleanRoomCode`; the host also refuses to reuse a saved unclean code) — it's on an office TV.
 - Relay: one Durable Object per room code, max 48 phones (`MAX_PLAYERS`; keep it a plain `const` — workerd refuses
   to start if the entry module exports anything but handlers/classes), `bye` before every server close
   (4001/4004/4009/4400). Normal games still put at most `M.MAX_PLAYERS` (12) on the pitch; the host sends `full` to the rest.

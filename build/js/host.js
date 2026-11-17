@@ -104,7 +104,7 @@
 
   // ---------- Room & relay ----------
   function startRoom(code) {
-    state.room = util.isRoomCode(code) ? code : util.roomCode();
+    state.room = util.isRoomCode(code) && util.isCleanRoomCode(code) ? code : util.roomCode();
     sessionStorage.setItem(ROOM_KEY, state.room);
     if (state.cup) store(CUP_ROOM_KEY, state.room);
     for (const p of [...state.match.players.values()]) if (!isLocal(p.id)) state.match.players.delete(p.id);

@@ -19,6 +19,20 @@ test("room codes avoid I and O and validate", () => {
   assert.ok(!util.isRoomCode("abcd"));
 });
 
+test("room codes never spell a rude word", () => {
+  for (const bad of ["FUCK", "CUNT", "SLUT", "ASSE", "WANK", "RAPE", "QSEX"]) assert.ok(!util.isCleanRoomCode(bad), bad);
+  for (const ok of ["KXRM", "BBWQ", "PCGG"]) assert.ok(util.isCleanRoomCode(ok), ok);
+  // When the dice land on a rude one, it rolls again.
+  const rolls = [[5, 18, 2, 9], [9, 21, 15, 11]]; // FUCK, then KXRM
+  const real = crypto.getRandomValues;
+  crypto.getRandomValues = (bytes) => (bytes.set(rolls.shift()), bytes);
+  try {
+    assert.equal(util.roomCode(), "KXRM");
+  } finally {
+    crypto.getRandomValues = real;
+  }
+});
+
 test("relay url: default, query override is remembered, reset", () => {
   store.clear();
   assert.equal(util.relayUrl(""), util.DEFAULT_RELAY);
