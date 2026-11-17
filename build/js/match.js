@@ -61,6 +61,7 @@
   // "next goal wins" if it's level at the end, and a full-time result before the next game starts by itself.
   // Length 0 = no limit (endless play, no clock).
   const GAME_LENGTHS = [0, 5, 10, 15, 30]; // minutes
+  const CUP_LENGTHS = [2, 3, 4, 5]; // shorter games for championship matches
   const FULLTIME_SHOW = 20; // seconds the result stays up
 
   const GOAL_PAUSE = 2.6;
@@ -110,6 +111,9 @@
       flower: null,
       flowerIn: 0,
       rand: Math.random,
+      // Championship matches: the host kicks off ("pre" waits) and moves on after full time ("full" holds).
+      manual: false,
+      maxPlayers: MAX_PLAYERS,
     };
   }
 
@@ -119,17 +123,23 @@
     return c;
   }
 
-  // Kickoff spots: a loose 3-wide grid on the half a team defends.
-  function formationSpot(team, index, swapped = false) {
-    const col = Math.floor(index / 3);
-    const row = [1, 0, 2][index % 3]; // middle first, then the wings
-    const depth = 150 + col * 150;
+  // Kickoff spots: a loose 3-wide grid on the half a team defends. Big teams (championship finals) get a
+  // 5-wide grid with columns squeezed to fit their half.
+  function formationSpot(team, index, swapped = false, size = 0) {
+    const rows = size > 9 ? 5 : 3;
+    const col = Math.floor(index / rows);
+    const row = (rows === 3 ? [1, 0, 2] : [2, 1, 3, 0, 4])[index % rows]; // middle first, then the wings
+    const cols = Math.ceil(Math.max(size, index + 1) / rows);
+    const depth = 150 + col * Math.min(150, 520 / Math.max(1, cols - 1));
+    const mid = (rows - 1) / 2;
+    const spacing = rows === 3 ? 190 : 135;
     const x = defends({ swapped }, team) === "left" ? CX - depth : CX + depth;
-    const y = CY + (row - 1) * 190 + (col % 2 ? 95 : 0) * (row === 1 ? 0 : 1);
+    const y = CY + (row - mid) * spacing + (col % 2 && row !== mid ? spacing / 2 : 0);
     return { x: clamp(x, PITCH.L + HALF + 10, PITCH.R - HALF - 10), y: clamp(y, PITCH.T + HALF + 10, PITCH.B - HALF - 10) };
   }
 
-  function addPlayer(m, id, name) {
+  // `team` ("left"/"right") puts a new player on that side; otherwise they join the smaller team.
+  function addPlayer(m, id, name, team) {
     const existing = m.players.get(id);
     if (existing) {
       existing.name = name || existing.name;
@@ -137,11 +147,11 @@
       existing.goneFor = 0;
       return existing;
     }
-    if (m.players.size >= MAX_PLAYERS) return null;
+    if (m.players.size >= (m.maxPlayers || MAX_PLAYERS)) return null;
     const counts = teamCounts(m);
-    const team = counts.left <= counts.right ? "left" : "right";
+    if (!TEAMS[team]) team = counts.left <= counts.right ? "left" : "right";
     const index = counts[team];
-    const spot = formationSpot(team, index, m.swapped);
+    const spot = formationSpot(team, index, m.swapped, index + 1);
     const player = {
       id,
       name: name || "Player",
@@ -188,6 +198,21 @@
     p.input = { x: 0, y: 0 };
   }
 
+  function removePlayer(m, id) {
+    if (!m.players.delete(id)) return false;
+    if (m.ball.lastTouch === id) m.ball.lastTouch = null;
+    return true;
+  }
+
+  // Empty the pitch (between championship matches); jersey numbers start again from 1. Power-ups end first, so
+  // their holders' phones hear about it.
+  function clearPlayers(m) {
+    clearPowerUps(m);
+    m.players.clear();
+    m.ball.lastTouch = null;
+    m.nextNumber = { left: 1, right: 1 };
+  }
+
   function sanitizeInput(raw) {
     const num = (v) => (typeof v === "number" && Number.isFinite(v) ? clamp(v, -1, 1) : 0);
     let x = num(raw && raw.x);
@@ -232,27 +257,34 @@
     const b = m.ball;
     Object.assign(b, { x: CX, y: CY, vx: 0, vy: 0, lastTouch: null });
     const index = { left: 0, right: 0 };
+    const size = teamCounts(m);
     const players = [...m.players.values()].sort((a, b2) => a.joinedAt - b2.joinedAt);
     for (const p of players) {
-      const spot = formationSpot(p.team, index[p.team]++, m.swapped);
+      const spot = formationSpot(p.team, index[p.team]++, m.swapped, size[p.team]);
       Object.assign(p, { x: spot.x, y: spot.y, vx: 0, vy: 0, dash: 0, facing: kickoffFacing(m, p.team) });
     }
     m.phase = "play";
     m.phaseTime = 0;
   }
 
-  // Fresh game: score 0–0, original ends, and (for timed games) wait for the first player to start the clock.
-  function resetMatch(m) {
+  // Fresh game: score 0–0, original ends, and (for timed games) wait for the first player to start the clock —
+  // or, with `kickOff`, start the clock right now.
+  function newGame(m, kickOff) {
     m.score = { left: 0, right: 0 };
     m.swapped = false;
     clearPowerUps(m);
     resetKickoff(m);
     m.events.push({ type: "reset" });
-    setPeriod(m, m.length ? "pre" : "free", 0);
+    if (!m.length) setPeriod(m, "free", 0);
+    else if (kickOff) setPeriod(m, "first", m.length / 2);
+    else setPeriod(m, "pre", 0);
   }
 
+  const resetMatch = (m) => newGame(m, false);
+  const startGame = (m) => newGame(m, true);
+
   function setGameLength(m, minutes) {
-    m.length = GAME_LENGTHS.includes(minutes) ? minutes * 60 : 0;
+    m.length = GAME_LENGTHS.includes(minutes) || CUP_LENGTHS.includes(minutes) ? minutes * 60 : 0;
     resetMatch(m);
   }
 
@@ -266,7 +298,7 @@
   function stepPeriod(m, dt) {
     switch (m.period) {
       case "pre":
-        if (m.players.size > 0) setPeriod(m, "first", m.length / 2);
+        if (!m.manual && m.players.size > 0) setPeriod(m, "first", m.length / 2);
         break;
       case "first":
       case "second":
@@ -288,7 +320,7 @@
         break;
       case "full":
         m.clock = Math.max(0, m.clock - dt);
-        if (m.clock === 0) resetMatch(m);
+        if (m.clock === 0 && !m.manual) resetMatch(m);
         break;
     }
   }
@@ -654,6 +686,10 @@
 
     if (m.phase === "play" && playing(m)) checkGoal(m);
     else if (m.phase === "goal" && m.phaseTime >= GOAL_PAUSE) resetKickoff(m);
+    else if (m.period === "pre" && (m.ball.x + BALL_R < PITCH.L || m.ball.x - BALL_R > PITCH.R)) {
+      // Warm-up shots don't count; the ball pops back to the centre spot.
+      Object.assign(m.ball, { x: CX, y: CY, vx: 0, vy: 0, lastTouch: null });
+    }
   }
 
   function drainEvents(m) {
@@ -697,12 +733,15 @@
     BUMP_SPEED,
     TEAMS,
     GAME_LENGTHS,
+    CUP_LENGTHS,
     FULLTIME_SHOW,
     defends,
     teamAt,
     setGameLength,
     createMatch,
     addPlayer,
+    removePlayer,
+    clearPlayers,
     setTeam,
     setMayhem,
     disconnectPlayer,
@@ -712,6 +751,7 @@
     step,
     resetKickoff,
     resetMatch,
+    startGame,
     formationSpot,
     drainEvents,
   };

@@ -2,6 +2,21 @@
 (function (root) {
   "use strict";
 
+  // Smart-TV browsers often run an older Chromium without ctx.roundRect (Chrome 99+). Without it the very first
+  // frame throws, so draw rounded rectangles with arcs instead.
+  const ctxProto = root.CanvasRenderingContext2D && root.CanvasRenderingContext2D.prototype;
+  if (ctxProto && !ctxProto.roundRect) {
+    ctxProto.roundRect = function (x, y, w, h, radii) {
+      const r = Math.max(0, Math.min(Number(Array.isArray(radii) ? radii[0] : radii) || 0, Math.abs(w) / 2, Math.abs(h) / 2));
+      this.moveTo(x + r, y);
+      this.arcTo(x + w, y, x + w, y + h, r);
+      this.arcTo(x + w, y + h, x, y + h, r);
+      this.arcTo(x, y + h, x, y, r);
+      this.arcTo(x, y, x + w, y, r);
+      this.closePath();
+    };
+  }
+
   const U = root.Uncinus;
   const M = U.match;
   const { W, H, PITCH, CX, CY, GOAL_HALF, GOAL_DEPTH, POST_R, HALF, BALL_R, TEAMS, STAR_R, STAR_LIFE, SHROOM_R, SHROOM_LIFE, FLOWER_R, FLOWER_LIFE } = M;
@@ -79,6 +94,7 @@
       this.fx = [];
       this.rand = rng(5);
       this.faces = null;
+      this.maxDpr = 2;
       this.resize();
     }
 
@@ -86,8 +102,14 @@
       this.theme = PALETTES[theme] ? theme : "day";
     }
 
+    // Slow screens (TV browsers) can trade sharpness for frame rate.
+    setMaxDpr(value) {
+      this.maxDpr = value;
+      this.resize();
+    }
+
     resize() {
-      const dpr = Math.min(2, root.devicePixelRatio || 1);
+      const dpr = Math.min(this.maxDpr, root.devicePixelRatio || 1);
       const w = this.canvas.clientWidth || root.innerWidth;
       const h = this.canvas.clientHeight || root.innerHeight;
       this.canvas.width = Math.round(w * dpr);
@@ -98,17 +120,15 @@
 
     // Effects driven by match events (called by the host as it drains them).
     onEvent(ev, m) {
-      if (ev.type === "period" && ev.period === "full") {
-        for (let i = 0; i < 120; i++) {
-          const a = this.rand() * Math.PI * 2;
-          const sp = 150 + this.rand() * 450;
-          this.fx.push({
-            kind: "confetti", x: CX, y: CY, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 250,
-            rot: this.rand() * 6, age: 0, life: 2 + this.rand(), color: ["#38bdf8", "#fb923c", "#fde047", "#ffffff"][i % 4], size: 6 + this.rand() * 6,
-          });
-        }
-      }
-      if (ev.type === "kick") {
+      if (ev.type === "period" && ev.period === "full") this.burst(CX, CY, 120, ["#38bdf8", "#fb923c", "#fde047", "#ffffff"]);
+      if (ev.type === "cheer") {
+        // Spectators' cheers float up from below the pitch.
+        if (this.fx.filter((f) => f.kind === "emoji").length > 40) return;
+        this.fx.push({
+          kind: "emoji", emoji: ev.emoji, x: 120 + this.rand() * (W - 240), y: H + 10, vx: (this.rand() - 0.5) * 60, vy: -240 - this.rand() * 140,
+          rot: 0, age: 0, life: 2.4, size: 34 + this.rand() * 14,
+        });
+      } else if (ev.type === "kick") {
         this.fx.push({ kind: "ring", x: ev.x, y: ev.y, age: 0, life: 0.45, color: "#ffffff" });
       } else if (ev.type === "star-spawn") {
         this.fx.push({ kind: "ring", x: ev.x, y: ev.y, age: 0, life: 0.6, color: "#fde047" });
@@ -147,6 +167,18 @@
             rot: this.rand() * 6, age: 0, life: 1.6 + this.rand(), color: i % 3 === 0 ? "#ffffff" : color, size: 6 + this.rand() * 6,
           });
         }
+      }
+    }
+
+    // A confetti explosion (full time, the championship trophy).
+    burst(x, y, count, colors) {
+      for (let i = 0; i < count; i++) {
+        const a = this.rand() * Math.PI * 2;
+        const sp = 150 + this.rand() * 450;
+        this.fx.push({
+          kind: "confetti", x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 250,
+          rot: this.rand() * 6, age: 0, life: 2 + this.rand(), color: colors[i % colors.length], size: 6 + this.rand() * 6,
+        });
       }
     }
 
@@ -744,6 +776,15 @@
           ctx.beginPath();
           ctx.arc(f.x, f.y, BALL_R + k * 50, 0, Math.PI * 2);
           ctx.stroke();
+        } else if (f.kind === "emoji") {
+          f.vy *= Math.exp(-0.6 * dt);
+          f.x += (f.vx + Math.sin(f.age * 5) * 30) * dt;
+          f.y += f.vy * dt;
+          ctx.globalAlpha = Math.max(0, Math.min(1, (1 - k) * 2.5));
+          ctx.font = `${Math.round(f.size)}px "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(f.emoji, f.x, f.y);
         } else {
           f.vy += 500 * dt;
           f.vx *= Math.exp(-1.2 * dt);

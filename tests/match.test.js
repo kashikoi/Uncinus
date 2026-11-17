@@ -559,3 +559,89 @@ test("not level at the end: straight to full time", () => {
   runPlay(m, 300);
   assert.equal(m.period, "full");
 });
+
+// ---------- Championship hooks ----------
+
+test("addPlayer can put a player on a chosen side, up to the match's own cap", () => {
+  const m = M.createMatch();
+  const a = M.addPlayer(m, "aaaaaa", "Ann", "right");
+  const b = M.addPlayer(m, "bbbbbb", "Bob", "right");
+  assert.deepEqual([a.team, b.team], ["right", "right"]);
+  assert.deepEqual([a.number, b.number], [1, 2]);
+  assert.ok(a.x > M.CX && b.x > M.CX);
+  m.maxPlayers = 30;
+  for (let i = 0; i < 28; i++) assert.ok(M.addPlayer(m, `p${String(i).padStart(2, "0")}xxxx`, `P${i}`), `player ${i + 3}`);
+  assert.equal(M.addPlayer(m, "extraxx", "X"), null);
+});
+
+test("clearPlayers empties the pitch and restarts jersey numbers; removePlayer forgets the last touch", () => {
+  const m = M.createMatch();
+  M.addPlayer(m, "aaaaaa", "Ann");
+  M.addPlayer(m, "bbbbbb", "Bob");
+  m.ball.lastTouch = "aaaaaa";
+  assert.equal(M.removePlayer(m, "aaaaaa"), true);
+  assert.equal(m.ball.lastTouch, null);
+  assert.equal(M.removePlayer(m, "aaaaaa"), false);
+  M.clearPlayers(m);
+  assert.equal(m.players.size, 0);
+  assert.equal(M.addPlayer(m, "cccccc", "Cy").number, 1);
+});
+
+test("clearPlayers ends power-ups first, so their holders' phones are told", () => {
+  const { m, hero } = starMatch();
+  m.flower = { x: hero.x, y: hero.y, age: 0 };
+  M.step(m, 1 / 120);
+  assert.ok(hero.star > 0 && hero.flower > 0);
+  M.drainEvents(m);
+  M.clearPlayers(m);
+  const ends = M.drainEvents(m).map((e) => `${e.type}:${e.id}`);
+  assert.ok(ends.includes("star-end:aaaaaa") && ends.includes("flower-end:aaaaaa"), ends.join(" "));
+  assert.equal(m.powered, false);
+});
+
+test("manual games wait for the host to kick off, and hold at full time", () => {
+  const m = M.createMatch();
+  m.manual = true;
+  M.setGameLength(m, 2);
+  assert.equal(m.length, 120, "championship lengths are accepted");
+  const ann = M.addPlayer(m, "aaaaaa", "Ann", "left");
+  M.addPlayer(m, "bbbbbb", "Bob", "right");
+  runPlay(m, 5);
+  assert.equal(m.period, "pre", "players warm up until the host starts the game");
+  M.drainEvents(m);
+  M.startGame(m);
+  assert.equal(m.period, "first");
+  assert.ok(Math.abs(m.clock - 60) < 0.01);
+  assert.deepEqual(periods(m), ["first"]);
+  Object.assign(m.ball, { x: M.PITCH.R - 60, y: M.CY, vx: 700, vy: 0, lastTouch: ann.id });
+  runPlay(m, 0.3 + M.GOAL_PAUSE);
+  runPlay(m, 125);
+  assert.equal(m.period, "full");
+  runPlay(m, M.FULLTIME_SHOW + 30);
+  assert.equal(m.period, "full", "no automatic new game");
+  assert.deepEqual(m.score, { left: 1, right: 0 });
+});
+
+test("warm-up shots pop back to the centre spot without scoring", () => {
+  const m = M.createMatch();
+  m.manual = true;
+  M.setGameLength(m, 3);
+  M.addPlayer(m, "aaaaaa", "Ann", "left");
+  Object.assign(m.ball, { x: M.PITCH.R - 60, y: M.CY, vx: 700, vy: 0, lastTouch: "aaaaaa" });
+  runPlay(m, 0.5);
+  assert.deepEqual(m.score, { left: 0, right: 0 });
+  assert.deepEqual([m.ball.x, m.ball.y], [M.CX, M.CY]);
+  assert.equal(m.phase, "play");
+});
+
+test("big teams line up in a wider grid that stays on their own half", () => {
+  for (const size of [4, 9, 12, 24]) {
+    const spots = Array.from({ length: size }, (_, i) => M.formationSpot("left", i, false, size));
+    for (const s of spots) {
+      assert.ok(s.x < M.CX && s.x >= M.PITCH.L + M.HALF && s.y >= M.PITCH.T + M.HALF && s.y <= M.PITCH.B - M.HALF);
+    }
+    const keys = new Set(spots.map((s) => `${Math.round(s.x)},${Math.round(s.y)}`));
+    assert.equal(keys.size, size, `${size} distinct spots`);
+  }
+  assert.deepEqual(M.formationSpot("left", 4, false, 6), M.formationSpot("left", 4), "small teams keep the classic grid");
+});

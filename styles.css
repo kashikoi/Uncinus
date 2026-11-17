@@ -1697,3 +1697,752 @@ body.is-flower .me {
   padding: 0 24px;
   text-align: center;
 }
+
+/* ==========================================================================
+   Championship — big screen
+   (Large overlays skip backdrop-filter: blurring over a moving canvas is costly on TV browsers.)
+   ========================================================================== */
+.modal {
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+}
+
+body[data-cup="lobby"] .join-card,
+body[data-cup="lobby"] .join-mini,
+body[data-cup="lobby"] .scoreboard,
+body[data-cup="lobby"] .match-clock,
+body[data-cup="draw"] .scoreboard,
+body[data-cup="draw"] .match-clock,
+body[data-cup="next"] .scoreboard,
+body[data-cup="next"] .match-clock,
+body[data-cup="champion"] .join-card,
+body[data-cup="champion"] .join-mini,
+body[data-cup="champion"] .scoreboard,
+body[data-cup="champion"] .match-clock,
+body[data-cup="champion"] .roster {
+  display: none !important;
+}
+
+.scoreboard__team {
+  font-weight: 800;
+  font-size: 1.25rem;
+  white-space: nowrap;
+}
+
+.cup-lobby {
+  position: fixed;
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(1240px, calc(100vw - 48px));
+  max-height: calc(100vh - 92px);
+  overflow-y: auto;
+  display: grid;
+  gap: 14px;
+  padding: 20px 26px;
+  border-radius: 22px;
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow);
+  z-index: 3;
+}
+
+.cup-lobby__title {
+  font-size: clamp(1.8rem, 3.2vw, 2.8rem);
+  font-weight: 900;
+  letter-spacing: -0.02em;
+}
+
+.cup-lobby__sub {
+  margin: 4px 0 0;
+  color: var(--ink-soft);
+  font-size: 1.1rem;
+}
+
+.cup-lobby__body {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.cup-lobby__join {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  width: clamp(170px, 19vw, 270px);
+  text-align: center;
+}
+
+.cup-lobby__qr {
+  width: 100%;
+  margin-bottom: 8px;
+  padding: 8px;
+  border-radius: 14px;
+  background: #fff;
+  line-height: 0;
+}
+
+.cup-lobby__qr svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.cup-lobby__url {
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  word-break: break-all;
+}
+
+.cup-teams {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.cup-teams[data-size="8"] {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.cup-team {
+  min-height: 118px;
+  border-radius: 16px;
+  border: 2px solid var(--team);
+  background: var(--btn);
+  overflow: hidden;
+}
+
+.cup-team__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--team);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.3rem;
+}
+
+.cup-team__emoji {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.cup-teams[data-size="8"] .cup-team__head {
+  gap: 6px;
+  padding: 6px 9px;
+  font-size: 1.05rem;
+}
+
+.cup-teams[data-size="8"] .cup-team__emoji {
+  font-size: 1.25rem;
+}
+
+.cup-team__name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cup-team__count {
+  min-width: 2ch;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.25);
+  font-family: var(--font-mono);
+  text-align: center;
+}
+
+.cup-team__members {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 10px;
+  list-style: none;
+}
+
+.cup-team__members .chip,
+.cup-champion__names .chip {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: var(--glass-strong);
+}
+
+.cup-team__empty {
+  padding: 4px 2px;
+  color: var(--ink-faint);
+  font-style: italic;
+}
+
+.cup-lobby__waiting {
+  margin: 0;
+  min-height: 1.4em;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.cup-lobby__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.cup-lobby__vip {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.cup-go {
+  padding: 12px 22px;
+  border-radius: 14px;
+  font-size: 1.2rem;
+}
+
+.cup-go:disabled {
+  opacity: 0.55;
+  cursor: default;
+  filter: none;
+}
+
+.cup-go:focus {
+  outline: 4px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* Between ties: what's next, the countdown, and the bracket — high enough to leave the pitch in view. */
+.cup-board {
+  position: fixed;
+  top: 66px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(980px, calc(100vw - 48px));
+  padding: 14px 22px 16px;
+  border-radius: 20px;
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--shadow);
+  text-align: center;
+  z-index: 3;
+}
+
+@media (min-width: 1700px) {
+  .cup-board {
+    top: 12px;
+  }
+}
+
+.cup-board__label {
+  font-size: clamp(1.5rem, 2.8vw, 2.4rem);
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.cup-board__vs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 4px;
+  font-size: clamp(1.3rem, 2.3vw, 2rem);
+  font-weight: 800;
+}
+
+.cup-vs__team {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cup-vs__v {
+  color: var(--ink-faint);
+  font-size: 0.8em;
+}
+
+.cup-board__moves {
+  margin: 8px 0 0;
+  color: var(--ink-soft);
+  font-weight: 600;
+}
+
+.cup-board__row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  margin-top: 10px;
+}
+
+.cup-board__count {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.3rem;
+}
+
+.cup-bracket {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 12px;
+  text-align: left;
+}
+
+.cup-bracket:empty {
+  display: none;
+}
+
+.cup-round {
+  flex: 1;
+  max-width: 250px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cup-round__ties {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+  gap: 8px;
+}
+
+.cup-round__name {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-faint);
+}
+
+.cup-tie {
+  padding: 4px 0;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: var(--btn);
+}
+
+.cup-tie.is-now {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.cup-tie__team {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 10px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.cup-tie__team span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cup-tie__team.is-win {
+  font-weight: 900;
+}
+
+.cup-tie__team.is-out {
+  opacity: 0.45;
+}
+
+.cup-tie small {
+  display: block;
+  padding: 0 10px;
+  color: var(--ink-faint);
+  font-size: 0.7rem;
+}
+
+.cup-bracket--small {
+  margin-top: 8px;
+  font-size: 0.82rem;
+}
+
+.cup-bracket--small .cup-round__ties {
+  gap: 4px;
+}
+
+.cup-bracket--small .cup-tie {
+  padding: 1px 0;
+}
+
+.cup-champion {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(920px, calc(100vw - 48px));
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  padding: 22px 28px;
+  border-radius: 26px;
+  background: var(--glass-strong);
+  border: 3px solid var(--team, #fde047);
+  box-shadow: 0 0 0 6px rgba(253, 224, 71, 0.35), var(--shadow);
+  text-align: center;
+  z-index: 6;
+}
+
+.cup-champion__trophy {
+  font-size: clamp(3.4rem, 8vw, 5.6rem);
+  line-height: 1;
+  animation: trophy-bob 2.2s ease-in-out infinite;
+}
+
+.cup-champion__word {
+  font-weight: 900;
+  font-size: clamp(2.4rem, 6vw, 4.4rem);
+  letter-spacing: 0.04em;
+  line-height: 1.05;
+  color: #d97706;
+  background: linear-gradient(180deg, #fde047 0%, #f59e0b 55%, #b45309 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.cup-champion__team {
+  margin-top: 8px;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: 900;
+}
+
+.cup-champion__names {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cup-champion__boot {
+  margin: 14px 0 0;
+  font-weight: 800;
+  font-size: 1.2rem;
+}
+
+.cup-champion__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.cup-board.is-compact .cup-bracket {
+  display: none;
+}
+
+/* Shorter TV screens (720p and below): tighten the overlays so their buttons stay on screen. */
+@media (max-height: 820px) {
+  .cup-lobby {
+    top: 64px;
+    gap: 10px;
+    padding: 14px 20px;
+  }
+
+  .cup-lobby__title {
+    font-size: 1.8rem;
+  }
+
+  .cup-lobby__sub {
+    font-size: 0.95rem;
+  }
+
+  .cup-lobby__join {
+    width: clamp(150px, 17vw, 210px);
+  }
+
+  .cup-lobby .room-code {
+    font-size: 2rem;
+  }
+
+  .cup-team {
+    min-height: 92px;
+  }
+
+  .cup-champion {
+    padding: 14px 22px;
+  }
+
+  .cup-champion__trophy {
+    font-size: 2.8rem;
+  }
+
+  .cup-champion__word {
+    font-size: 2.6rem;
+  }
+
+  .cup-champion__team {
+    margin-top: 2px;
+    font-size: 1.8rem;
+  }
+
+  .cup-champion__names {
+    margin-top: 8px;
+  }
+
+  .cup-champion__boot {
+    margin-top: 8px;
+  }
+
+  .cup-champion .cup-bracket {
+    display: none;
+  }
+}
+
+@keyframes trophy-bob {
+  50% {
+    transform: translateY(-8px) rotate(-5deg);
+  }
+}
+
+.cup-settings {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.cup-settings__row {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.cup-settings__row > span {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+}
+
+.modal__section .cup-settings__locked {
+  margin: 0;
+}
+
+/* ==========================================================================
+   Championship — phone
+   ========================================================================== */
+body.cup-watch .attack-bar,
+body.cup-watch .stick-area,
+body.cup-watch .pad-bottom {
+  display: none !important;
+}
+
+.cup-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: var(--glass-strong);
+  border: 1px solid var(--glass-border);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.cup-bar__text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cup-screen {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 6px;
+}
+
+.cup-card {
+  padding: 16px;
+  text-align: center;
+}
+
+.cup-card__label {
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
+}
+
+.cup-card__vs {
+  margin-top: 6px;
+  font-size: 1.35rem;
+  font-weight: 900;
+  line-height: 1.25;
+}
+
+.cup-card__sub {
+  margin-top: 6px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-soft);
+}
+
+.cup-card__vs:empty,
+.cup-card__sub:empty,
+.cup-note:empty {
+  display: none;
+}
+
+.cup-note {
+  margin: 0;
+  text-align: center;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.cup-picks {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.cup-pick {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas: "emoji name" "names names";
+  align-items: center;
+  gap: 2px 8px;
+  padding: 12px;
+  border-radius: 16px;
+  border: 3px solid transparent;
+  background: var(--team);
+  color: #fff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: inset 0 -5px 0 rgba(0, 0, 0, 0.2);
+}
+
+.cup-pick__emoji {
+  grid-area: emoji;
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.cup-pick__name {
+  grid-area: name;
+  font-weight: 800;
+  font-size: 1.05rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cup-pick__names {
+  grid-area: names;
+  font-size: 0.75rem;
+  opacity: 0.9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cup-pick.is-mine {
+  border-color: #fff;
+  box-shadow: 0 0 0 3px var(--team), inset 0 -5px 0 rgba(0, 0, 0, 0.2);
+}
+
+.cup-pick.is-mine::after {
+  content: "✓";
+  position: absolute;
+  top: -9px;
+  right: -9px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: #fff;
+  color: var(--team);
+  font-weight: 900;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.cup-pick:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.cup-pick:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.cup-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 10px 14px;
+  list-style: none;
+  border-radius: var(--radius);
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  font-size: 0.9rem;
+}
+
+.cup-list b {
+  display: block;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
+}
+
+.cup-list .is-mine {
+  font-weight: 800;
+}
+
+.cup-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: auto;
+}
+
+.cup-actions .btn:disabled {
+  opacity: 0.55;
+}
+
+.btn.cup-cheer,
+.btn.cup-cheer:hover {
+  border: 0;
+  background: linear-gradient(135deg, #fde047, #f97316);
+  color: #431407;
+  font-size: 1.3rem;
+  font-weight: 900;
+}
+
+.cup-cheer.is-cheering {
+  animation: cheer-pop 0.35s ease-out;
+}
+
+@keyframes cheer-pop {
+  40% {
+    transform: scale(1.06) rotate(-2deg);
+  }
+}

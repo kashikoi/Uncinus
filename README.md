@@ -53,8 +53,45 @@ click or press a key on the page (the 🔊 button pulses until then); toggle it 
 
 No phone handy? Press <kbd>K</kbd> on the Mac to play with the arrow keys / WASD and Space to kick.
 
-Up to 12 players. If a phone locks or drops, its player stands faded ("away") for 20 seconds before leaving;
-reopening the page picks the same player back up.
+Up to 12 players on the pitch in a normal game (the room itself takes up to 48 phones — see Championship mode). If
+a phone locks or drops, its player stands faded ("away") for 20 seconds before leaving; reopening the page picks the
+same player back up.
+
+## Championship mode (big groups)
+
+**Settings → 🏆 Championship mode** turns a crowd into a knockout tournament, and the same switch takes you back
+to normal play.
+
+1. **Huddle up.** Everyone scans the QR code (up to 48 phones). The big screen shows the teams filling up — 4 (or 8)
+   themed teams: 🦃 Turkeys, 🥧 Pies, 🎃 Pumpkins, 🌽 Corn… in November, sky names (🌞 Suns, 🌙 Moons…) otherwise.
+   Each phone picks a team and can switch until kickoff. The first phone to join is the 👑 **commissioner**.
+2. **Kick it off.** The commissioner taps **Start the championship** (or press Start on the big screen; it needs at
+   least one player per team). Teams are evened up — the earliest pickers keep their team, late pickers and the
+   undecided fill the gaps — and drawn into a bracket: semi-finals, then the final (8 teams add quarter-finals).
+3. **Take turns.** Before each tie the two teams walk onto the pitch for a 30-second warm-up (phones buzz "YOU'RE
+   UP!") while the big screen shows who's playing and the bracket; the commissioner can kick off early. Ties are
+   short timed games (2–5 min, default 4) with the usual half-time swap, and level at the end means next goal wins,
+   so every tie has a winner. Everyone else's phone shows the live score, when they play next, and a 📣 **Cheer**
+   button that floats emoji up the big screen.
+4. **Crown the champions** — trophy screen, confetti, fanfare, and the ⚽ Golden Boot for the top scorer. Then
+   **New championship** (same teams; anyone can switch) or **Back to normal play**.
+
+Options (Settings): 4 or 8 teams, match length, Thanksgiving or sky names, and **Everyone plays the final** —
+beaten teams join the team that knocked them out, so nobody sits out for long and the final is everybody.
+Latecomers can join mid-championship and pick any team still in it. If a team has nobody connected when its tie is
+due, the countdown waits for them ("Waiting for the 🥧 Pies to rejoin…"); the commissioner can kick off anyway,
+which gives the other team a walkover. Turning the mode off pauses the championship (normal play resumes with up to
+12 on the pitch); turning it back on carries on from the warm-up of the interrupted tie. It also survives a reload
+or restart of the big screen: it reopens the same room and phones reconnect by themselves.
+Settings → **Replay this match** restarts the tie being played from its warm-up.
+
+### On a TV
+
+Open `kashikoi.github.io/uncinus` (TV browsers that lowercase the address still land on the game) and press OK once
+so sound can start. Older TV browsers are covered: rounded shapes fall back when the browser lacks `roundRect`, a
+bad frame can't freeze the screen, and on a slow screen the game tries 1× pixel density and keeps it if that helps. In championship mode
+the big-screen buttons (Start, Kick off now) take the remote's focus, so OK presses them. Turn off the TV's screen
+saver / eco auto-off before a long session.
 
 ## How it works
 
@@ -90,7 +127,7 @@ to phones via the QR link; `?relay=default` resets it. Over plain `http://` iOS 
 ## Tests
 
 ```sh
-node --test tests/*.test.js     # match physics, QR encoder, helpers
+node --test tests/*.test.js     # match physics, championship, QR encoder, helpers
 (cd relay && npm test)          # relay integration
 ```
 

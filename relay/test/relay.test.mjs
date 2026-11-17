@@ -127,11 +127,11 @@ test("rejoining with the same id replaces the old socket without a leave", async
 	a2.close();
 });
 
-test("caps a room at 12 players", async () => {
+test("caps a room at 48 players", async () => {
 	const host = open("/room/FULL?role=host");
 	await host.next(t("welcome"));
 	const players = [];
-	for (let i = 0; i < 12; i++) {
+	for (let i = 0; i < 48; i++) {
 		const p = open(`/room/FULL?role=player&id=player${String(i).padStart(2, "0")}&name=P${i}`);
 		await p.next(t("welcome"));
 		players.push(p);

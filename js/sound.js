@@ -340,6 +340,30 @@
     src.connect(bp).connect(env(out(pan, 1), t, 0.55, 0.08, 0.04, 0.24));
   }
 
+  // Kickoff: a referee's pea whistle — a bright, trilling tone (the pea rattles), short-short-long.
+  function whistle() {
+    if (!ready()) return;
+    const t = ctx.currentTime + 0.02;
+    const dest = out(0, 0.45);
+    for (const [at, dur] of [[0, 0.12], [0.2, 0.12], [0.4, 0.75]]) {
+      const o = ctx.createOscillator();
+      o.type = "sine";
+      o.frequency.value = 2950;
+      const lfo = ctx.createOscillator();
+      const depth = ctx.createGain();
+      lfo.frequency.value = 36;
+      depth.gain.value = 160;
+      lfo.connect(depth).connect(o.frequency);
+      o.connect(env(dest, t + at, 0.32, 0.01, dur - 0.05, 0.04));
+      const breath = noiseSrc(t + at, dur);
+      breath.connect(filter("bandpass", 3000, 2)).connect(env(dest, t + at, 0.06, 0.01, dur - 0.05, 0.04));
+      for (const node of [o, lfo]) {
+        node.start(t + at);
+        node.stop(t + at + dur + 0.05);
+      }
+    }
+  }
+
   root.Uncinus = root.Uncinus || {};
   root.Uncinus.sound = {
     get enabled() {
@@ -358,5 +382,6 @@
     count,
     airHorn,
     whoosh,
+    whistle,
   };
 })(window);

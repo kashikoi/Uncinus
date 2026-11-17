@@ -37,6 +37,12 @@
     canPick: false,
     counts: {},
     cam: null,
+    cup: null, // the latest championship picture from the host, while championship mode is on
+    cupDeadline: 0,
+    faceSent: false,
+    cheerAt: 0,
+    score: { left: 0, right: 0 },
+    clockText: "",
   };
 
   const $ = (id) => document.getElementById(id);
@@ -59,6 +65,9 @@
     el.periodScreen.hidden = true;
     el.meClock.hidden = true;
     state.period = null;
+    state.cup = null;
+    state.you = null;
+    renderCupMode();
     document.body.classList.remove("is-star", "is-big", "is-flower");
     el.playScreen.hidden = true;
     el.joinScreen.hidden = false;
@@ -103,14 +112,17 @@
     switch (msg.t) {
       case "welcome":
         state.lastSent = "";
+        state.faceSent = false;
         hideOverlay();
         break;
       case "you":
         sendFace();
+        state.faceSent = true;
         state.team = msg.team;
-        el.meSwatch.style.backgroundColor = msg.color;
-        el.meNumber.textContent = msg.number;
-        el.meColor.textContent = `#${msg.number}`;
+        state.you = msg;
+        // The host only sends "you" to players on the pitch.
+        if (state.cup) state.cup.side = msg.team;
+        applyYou();
         state.sides = msg.sides && msg.sides.left ? msg.sides : { left: "left", right: "right" };
         state.defends = state.sides[msg.team] || "left";
         state.attack = state.defends === "left" ? "you attack →" : "← you attack";
@@ -121,7 +133,10 @@
         if (!state.canPick) el.teamPick.hidden = true;
         else if (!state.picked) showTeamPick(state.counts);
         renderTilt();
-        document.documentElement.style.setProperty("--me", msg.color);
+        renderCupMode();
+        break;
+      case "cup":
+        onCup(msg);
         break;
       case "score":
         renderScore(msg);
@@ -160,6 +175,16 @@
   // Mini pitch: the goal you defend is your colour; the other one is where you score.
   const TEAM_VAR = { left: "var(--sky-team)", right: "var(--ember-team)" };
 
+  // Your block on the pitch: colour and jersey number (the championship screen shows your team instead).
+  function applyYou() {
+    const msg = state.you;
+    if (!msg) return;
+    el.meSwatch.style.backgroundColor = msg.color;
+    el.meNumber.textContent = msg.number;
+    el.meColor.textContent = `#${msg.number}`;
+    document.documentElement.style.setProperty("--me", msg.color);
+  }
+
   // Each end of the mini pitch wears the colour of the team defending it (they swap at half time).
   function renderAttack() {
     const left = state.defends === "left";
@@ -179,6 +204,9 @@
 
   const PERIOD_LABEL = { first: "1st", second: "2nd", golden: "⚡ Next goal wins", full: "FT" };
   const fmtClock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  // Championship spectators don't get their own pad, so goals and full time are only shown to those playing.
+  // Everyone gets the championship screen for the trophy.
+  const watching = () => Boolean(state.cup) && (!state.cup.side || state.cup.phase === "champion");
 
   function renderClock({ period, clock }) {
     const label = PERIOD_LABEL[period];
@@ -186,7 +214,9 @@
     el.meClock.hidden = !label;
     const untimed = period === "full" || period === "golden";
     el.meClock.textContent = label ? `${label} ${untimed ? "" : fmtClock(secs)}`.trim() : "";
-    el.periodCount.textContent = period === "full" ? `Next game in ${fmtClock(secs)}` : "";
+    el.periodCount.textContent = period === "full" && !state.cup ? `Next game in ${fmtClock(secs)}` : "";
+    state.clockText = el.meClock.textContent;
+    if (state.cup) renderCupCard();
   }
 
   function onPeriod(msg) {
@@ -194,6 +224,7 @@
     state.period = msg.period;
     renderClock(msg);
     if (msg.score) renderScore(msg.score);
+    if (watching()) return;
     if (msg.period === "full") {
       const s = msg.score || {};
       const mine = s[state.team] || 0;
@@ -257,11 +288,13 @@
   }
 
   function renderScore({ left, right }) {
-    if (Number.isInteger(left)) el.scoreLeft.textContent = left;
-    if (Number.isInteger(right)) el.scoreRight.textContent = right;
+    if (Number.isInteger(left)) el.scoreLeft.textContent = state.score.left = left;
+    if (Number.isInteger(right)) el.scoreRight.textContent = state.score.right = right;
+    if (state.cup) renderCupCard();
   }
 
   function flashGoal(msg) {
+    if (watching()) return;
     el.goalFlash.classList.remove("is-star", "is-big", "is-flower");
     const ours = msg.team === state.team;
     const mine = msg.scorerId === state.id;
@@ -277,7 +310,7 @@
   function handleStatus(status) {
     el.status.dataset.state = status;
     if (status === "no-host") showJoin(`Room ${state.room} isn't open. Check the code on the big screen.`);
-    else if (status === "full") showJoin("That match is full — 12 players max.");
+    else if (status === "full") showJoin("That room is full — 48 phones max.");
     else if (status === "replaced") showOverlay("You're playing from another tab.", "Play here", () => state.link.connect());
     else if (status === "reconnecting" && state.link && state.link.attempt > 1) showOverlay("Reconnecting…");
     else if (status === "open") hideOverlay();
@@ -296,6 +329,165 @@
 
   function hideOverlay() {
     el.overlay.hidden = true;
+  }
+
+  // ---------- Championship ----------
+  function onCup(msg) {
+    if (!msg.on) {
+      state.cup = null;
+      renderCupMode();
+      return;
+    }
+    const prev = state.cup;
+    state.cup = msg;
+    state.cupDeadline = Date.now() + (Number(msg.timer) || 0) * 1000;
+    if (msg.score) renderScore(msg.score);
+    // Faces go with every "you", but spectators need theirs on the big screen's team cards too.
+    if (!state.faceSent) {
+      sendFace();
+      state.faceSent = true;
+    }
+    if (msg.phase !== "match" && msg.phase !== "result") el.periodScreen.hidden = true;
+    if (msg.phase === "next" && msg.side && !(prev && prev.side && prev.phase === "next")) {
+      powerFlash("is-swap", "⚽ YOU'RE UP!", `${msg.tie ? msg.tie.label : "Your match"} — find your block and warm up`, [200, 80, 200, 80, 300]);
+    } else if (msg.phase === "champion" && !(prev && prev.phase === "champion") && msg.mine === msg.champion && msg.mine !== null) {
+      powerFlash("is-golden", "🏆 CHAMPIONS!", "You won the championship!", [100, 50, 100, 50, 100, 50, 400]);
+    }
+    // Full time in a tie you played: say what it means.
+    if (msg.phase === "result" && msg.side && !el.periodScreen.hidden) {
+      const s = msg.tie && msg.tie.s;
+      const mine = s ? s[msg.side === "left" ? 0 : 1] : 0;
+      const theirs = s ? s[msg.side === "left" ? 1 : 0] : 0;
+      el.periodSubtext.textContent = `${mine} – ${theirs} · ${msg.note}`;
+    }
+    renderCupMode();
+  }
+
+  const cupTeam = (id) => (state.cup && Number.isInteger(id) && state.cup.teams[id]) || null;
+  const cupName = (id) => {
+    const t = cupTeam(id);
+    return t ? `${t.emoji} ${t.name}` : "?";
+  };
+  const cupColor = (t) => (t && /^#[0-9a-f]{6}$/i.test(t.color) ? t.color : "#64748b");
+  const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+
+  // On the pitch you get the normal pad plus a slim championship bar; otherwise the championship screen.
+  function renderCupMode() {
+    const cup = state.cup;
+    const watch = watching();
+    document.body.classList.toggle("cup-watch", watch);
+    el.cupScreen.hidden = !watch;
+    el.cupBar.hidden = !cup || watch;
+    if (!cup) return;
+    if (watch) {
+      document.body.classList.remove("is-star", "is-big", "is-flower");
+      const team = cupTeam(cup.mine);
+      el.meSwatch.style.backgroundColor = team ? cupColor(team) : "";
+      el.meNumber.textContent = team ? team.emoji : "";
+      el.meColor.textContent = team ? team.name : "Pick a team";
+      if (team) document.documentElement.style.setProperty("--me", cupColor(team));
+      renderCupPicks();
+      renderCupList();
+    } else applyYou();
+    renderCupCard();
+    const go = cup.vip ? { lobby: "▶ Start the championship", draw: "Skip ▶", next: "Kick off now ▶", champion: "New championship" }[cup.phase] : null;
+    el.cupGo.hidden = !go || !watch;
+    el.cupGo.textContent = cup.phase === "lobby" && cup.need > 0 ? `Need ${plural(cup.need, "more player")} to start` : go || "";
+    el.cupGo.disabled = cup.phase === "lobby" && cup.need > 0;
+    el.cupBarGo.hidden = !cup.vip || cup.phase !== "next";
+    el.cupCheer.hidden = !(cup.phase === "next" || cup.phase === "match" || cup.phase === "result");
+  }
+
+  // The headline card: what's on (with the live score) and the countdown to what's next.
+  function renderCupCard() {
+    const cup = state.cup;
+    if (!cup) return;
+    const t = cup.tie;
+    const left = Math.ceil(Math.max(0, state.cupDeadline - Date.now()) / 1000);
+    let label = "🏆 Championship";
+    let vs = "";
+    let sub = "";
+    if (cup.phase === "lobby") {
+      vs = cupTeam(cup.mine) ? cupName(cup.mine) : "Pick your team";
+      const players = Number(cup.players) || 0;
+      if (cup.need > 0) sub = `${plural(players, "player")} in · need ${cup.need} more to start`;
+      else sub = cup.vip ? `${plural(players, "player")} in · start when everyone's here` : `${plural(players, "player")} in · ${cup.vipName || "the commissioner"} starts it`;
+    } else if (cup.phase === "draw") {
+      label = "🏆 The draw";
+      vs = cupTeam(cup.mine) ? `You're on the ${cupName(cup.mine)}` : "Pick a team to jump in";
+      sub = `First match in ${fmtClock(left)}`;
+    } else if (t && cup.phase === "next") {
+      label = t.label;
+      vs = `${cupName(t.a)} vs ${cupName(t.b)}`;
+      const away = Array.isArray(cup.missing) ? cup.missing : [];
+      sub = away.length ? `Waiting for the ${away.map(cupName).join(" and the ")} to rejoin…` : `Kick off in ${fmtClock(left)}`;
+    } else if (t && cup.phase === "match") {
+      label = t.label;
+      vs = `${cupName(t.a)} ${state.score.left} – ${state.score.right} ${cupName(t.b)}`;
+      sub = state.clockText;
+    } else if (t && cup.phase === "result") {
+      label = `${t.label} · full time`;
+      vs = t.s ? `${cupName(t.a)} ${t.s[0]} – ${t.s[1]} ${cupName(t.b)}` : `${cupName(t.a)} vs ${cupName(t.b)}`;
+      sub = t.w === null ? "" : `${cupName(t.w)} win${t.wo ? " (walkover)" : ""}!`;
+    } else if (cup.phase === "champion") {
+      label = "🏆 Champions";
+      vs = cupName(cup.champion);
+      const boot = cup.boot || [];
+      const who = boot.length > 3 ? `${boot.slice(0, 2).map((b) => b.name).join(", ")} & ${boot.length - 2} more` : boot.map((b) => b.name).join(" & ");
+      sub = boot.length ? `⚽ Golden Boot: ${who} · ${plural(boot[0].goals, "goal")}` : "";
+    }
+    el.cupLabel.textContent = label;
+    el.cupVs.textContent = vs;
+    el.cupSub.textContent = sub;
+    el.cupNote.textContent = cup.moved ? `To even up the teams you've moved to the ${cupName(cup.mine)}. ${cup.note}` : cup.note || "";
+    const bar = { next: `${t ? t.label : ""} · ${cup.missing && cup.missing.length ? "waiting for the other team…" : `warm up! Kick off in ${fmtClock(left)}`}`, match: t ? `${t.label} · ${cupName(t.a)} vs ${cupName(t.b)}` : "", result: t ? `${t.label} · full time` : "" }[cup.phase];
+    el.cupBarText.textContent = bar || "🏆 Championship";
+  }
+
+  // Team buttons: anyone can pick (and switch) in the lobby; latecomers pick once from the teams still in it.
+  function renderCupPicks() {
+    const cup = state.cup;
+    const open = cup.phase === "lobby" || (cup.mine === null && cup.phase !== "champion");
+    el.cupPicks.hidden = !open;
+    if (!open) return;
+    el.cupPicks.dataset.size = cup.teams.length;
+    el.cupPicks.innerHTML = cup.teams
+      .map((t, id) => {
+        const esc = util.escapeHtml;
+        const names = t.out ? "out" : `${t.names.length} · ${t.names.length ? esc(t.names.join(", ")) : "nobody yet"}`;
+        const mine = id === cup.mine ? " is-mine" : "";
+        return `<button type="button" class="cup-pick${mine}" data-team="${id}" style="--team: ${cupColor(t)}"${t.out ? " disabled" : ""}><span class="cup-pick__emoji">${esc(t.emoji)}</span><span class="cup-pick__name">${esc(t.name)}</span><span class="cup-pick__names">${names}</span></button>`;
+      })
+      .join("");
+  }
+
+  function renderCupList() {
+    const cup = state.cup;
+    el.cupList.hidden = !cup.bracket.length || cup.phase === "lobby";
+    el.cupList.innerHTML = cup.bracket
+      .flat()
+      .map((t) => {
+        const esc = util.escapeHtml;
+        const score = t.s ? `${Number(t.s[0])} – ${Number(t.s[1])}` : "vs";
+        const cls = cup.mine !== null && (t.a === cup.mine || t.b === cup.mine) ? ' class="is-mine"' : "";
+        return `<li${cls}><b>${esc(t.label)}</b> ${esc(cupName(t.a))} ${score} ${esc(cupName(t.b))}</li>`;
+      })
+      .join("");
+  }
+
+  function cupTick() {
+    if (state.cup && (state.cup.phase === "draw" || state.cup.phase === "next")) renderCupCard();
+  }
+
+  function cheer() {
+    const now = Date.now();
+    if (!state.link || now - state.cheerAt < 500) return;
+    state.cheerAt = now;
+    state.link.send({ t: "cheer" });
+    if (navigator.vibrate) navigator.vibrate(15);
+    el.cupCheer.classList.remove("is-cheering");
+    void el.cupCheer.offsetWidth;
+    el.cupCheer.classList.add("is-cheering");
   }
 
   // ---------- Face photo ----------
@@ -575,8 +767,24 @@
       "appVersion", "faceThumb", "faceImg", "faceBlank", "faceHint", "faceBtn", "faceClear", "cam", "camVideo", "camShot",
       "camError", "camCancel", "camSnap", "camRetake", "camUse", "teamPick", "pickLeft", "pickRight", "attackBar", "goalLeftLabel", "goalRightLabel", "attackArrow", "meClock", "periodScreen", "periodTitle",
       "periodSubtext", "periodCount", "pickLeftDir", "pickLeftText", "pickRightDir", "pickRightText",
+      "cupBar", "cupBarText", "cupBarGo", "cupScreen", "cupLabel", "cupVs", "cupSub", "cupNote", "cupPicks", "cupList", "cupGo", "cupCheer",
     ].forEach((id) => (el[id] = $(id)));
     el.appVersion.textContent = `v${util.APP_VERSION}`;
+
+    el.cupPicks.addEventListener("click", (ev) => {
+      const btn = ev.target.closest("[data-team]");
+      if (!btn || btn.disabled || !state.link || !state.cup) return;
+      const team = Number(btn.dataset.team);
+      state.link.send({ t: "cup-pick", team });
+      // Show the pick straight away; the host confirms (or corrects) it.
+      state.cup.mine = team;
+      renderCupMode();
+    });
+    const go = () => state.link && state.cup && state.link.send({ t: "cup-go", phase: state.cup.phase });
+    el.cupGo.addEventListener("click", go);
+    el.cupBarGo.addEventListener("click", go);
+    el.cupCheer.addEventListener("click", cheer);
+    setInterval(cupTick, 250);
 
     el.roomInput.addEventListener("input", () => {
       el.roomInput.value = el.roomInput.value.toUpperCase().replace(/[^A-Z]/g, "").replace(/[IO]/g, "");

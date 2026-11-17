@@ -14,7 +14,7 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
   unpredictable and fun with a lot of players"). Don't "fix" `RESPONSE`/dash momentum into tight controls.
 
 ## Architecture rules (keep these)
-- Classic scripts on `window.Uncinus`, no ES modules. Host load order: util → qr → net → face → match → render → sound → host.
+- Classic scripts on `window.Uncinus`, no ES modules. Host load order: util → qr → net → face → match → cup → render → sound → host.
   Controller: util → net → face → controller.
 - **The host is authoritative.** All match state lives in `js/match.js` (pure, no DOM, unit-tested); the host steps it
   at fixed 1/120 s substeps. Phones send `{t:"in", x, y, k}` (`sanitizeInput` clamps to the unit disc) and face photos.
@@ -56,9 +56,40 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
   `M.teamAt(m, end)` (goals, formation, renderer colours). Events `period{period,clock,score}`; host→player
   `period{…}`, `clock{period,clock}` once per second, and `you.sides` (end each colour defends) is re-sent before
   each period message so phones never show a stale direction.
-- Relay: one Durable Object per room code, max 12 players, `bye` before every server close (4001/4004/4009/4400).
+- Relay: one Durable Object per room code, max 48 phones (`MAX_PLAYERS`; keep it a plain `const` — workerd refuses
+  to start if the entry module exports anything but handlers/classes), `bye` before every server close
+  (4001/4004/4009/4400). Normal games still put at most `M.MAX_PLAYERS` (12) on the pitch; the host sends `full` to the rest.
 - Protocol: host→player `you{name,team,teamName,color,number,pick,counts,sides}`, `period`, `clock`, `score{left,right}`, `goal{team,scorerId,
   scorerName,ownGoal,score}`, `star{on,secs}`, `big{on,secs}`, `flower{on,secs,points}`, `full`; `goal` also has `points`; relay→player `welcome`, `host-left`, `host-back`.
+  Championship: host→player `cup{on:true, phase, size, timer, merge, teams[{id,name,emoji,color,out,into,names}], tie, bracket, score,
+  champion, boot, need, missing, players, vipName, mine, side, vip, note, moved}` (per phone; never broadcast player ids) and `cup{on:false}`
+  (sent on every normal-mode greet, so a phone that last saw a championship goes back to the pad); player→host `cup-pick{team}`,
+  `cup-go{phase}` (commissioner only), `cheer` (spectators only, `CHEER_GAP`).
+- **Championship mode** (Settings toggle `uncinus_cup_on`; settings `uncinus_cup_settings` {size 4|8, length 2–5, theme feast|sky,
+  merge}; the championship itself is saved in `uncinus_cup` and its room code in `uncinus_cup_room`, so a reload — or a TV that
+  restarts with fresh sessionStorage — resumes it in the same room and waiting phones reconnect on their own). `js/cup.js` is pure and unit-tested:
+  members by phone id (`team`, `home`, `seq` join order, `pickSeq`), phases lobby → draw → next (warm-up) → match → result → … →
+  champion, timers `DRAW_SHOW`/`NEXT_SHOW`/`RESULT_SHOW` stepped by the host, `start` (needs a connected player per team) evens teams
+  (earliest pickers stay; late pickers and the undecided fill gaps) and draws `rounds`; `finish` records a tie (coin toss if level —
+  only by walkover/reset). `step` holds the warm-up countdown (at ≥ `WAIT_BACK`) while `missing` lists a team with nobody connected —
+  never forfeit on the clock; a forced kickoff (`skip`) gives the present team a walkover. `merge` moves beaten members to the winner;
+  `note` is each phone's one-line status; the commissioner (`vip`) is the earliest-joined connected member. Team names/emoji/colours
+  live in `THEMES` (Thanksgiving by default in November). Host: `state.cup`; only the current tie's connected members are on the
+  pitch (`setupPitch`/`fillPitch`, tie `a` = left/blue, `b` = right/orange, `state.cupPitch` guards kickoff); `m.manual` makes `pre`
+  wait for `M.startGame` and `full` hold; `m.maxPlayers` = 48; `C.finish` runs on the `full` period event and the cup's `result`
+  phase shows the winner (the normal FULL TIME banner is skipped); `cupEvents` applies the latest phase once per drain;
+  `cupGo(phase)` = commissioner phone (`cup-go{phase}`) or the big-screen buttons (lobby Start, board Skip/Kick off now, trophy
+  New championship); presses for another phase, or within `GO_GAP` of a phase change, are ignored (double taps / repeated OK);
+  `syncCup` sends every phone its `cup` message (debounced 150 ms) and saves. `M.clearPlayers` ends power-ups first (phones get
+  `star/big/flower{on:false}`). The phone's `you` handler marks it on the pitch (`cup.side`) and `applyYou` restores the pitch
+  colour/number whenever the pad shows. Settings "New game" becomes "Replay this match"
+  (`C.replay`); the keyboard player is off in championship mode. Phone: `watching()` (cup on and not on the pitch, or the
+  trophy) → `body.cup-watch` hides the pad and shows `#cupScreen` (team picks, status card with live score, bracket, commissioner
+  button, Cheer); on the pitch the normal pad plus `#cupBar`. Big overlays avoid `backdrop-filter` (costly over the canvas on TVs).
+- TV browsers (the office TV lowercases URLs and may run an old Chromium): `render.js` polyfills `ctx.roundRect`; the frame
+  loop schedules the next frame before running and catches errors; `watchFrameRate` trials 1× pixel density when most frames
+  are slow and reverts if frames didn't get faster (30 fps caps like Energy Saver aren't render cost). Keep host-loaded scripts
+  free of `?.`/`??` and other post-2020 syntax.
 - Sound (`js/sound.js`, host only, loaded after render): all effects are synthesised with WebAudio, no audio files;
   the 10…1 countdown uses `speechSynthesis`. `host.playSound` maps match events → sounds: `dash` whoosh, `bump` (new
   match event when two players hit at > `BUMP_SPEED`) → an "oof" per player (per-player pitch, `OOF_GAP` debounce),
@@ -67,8 +98,9 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
 - `[hidden] { display:none !important }` is required.
 
 ## Testing
-- `node --test tests/*.test.js` (match physics, QR, util); `cd relay && npm test` (boots wrangler dev).
-- UI verified with headless Chrome + playwright-core (host + four phone contexts; not checked in).
+- `node --test tests/*.test.js` (match physics, championship, QR, util); `cd relay && npm test` (boots wrangler dev).
+- UI verified with headless Chrome + playwright-core (host + phone contexts against a local relay; not checked in).
+  Run it under `caffeinate` — a sleeping Mac stalls the headless browser and makes waits time out.
 
 ## Release flow
 Work on `develop` → bump `APP_VERSION` in `js/util.js` and every `?v=` in index.html and play.html → run tests →

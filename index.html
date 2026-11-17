@@ -6,13 +6,13 @@
   <title>Sky Soccer — every phone is a player</title>
   <meta name="description" content="Party soccer in the clouds: the Mac is the pitch, every phone is a blocky player." />
   <meta name="theme-color" content="#0f172a" />
-  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.11.05.1" />
-  <link rel="apple-touch-icon" href="icon.svg?v=2026.11.05.1" />
-  <link rel="manifest" href="manifest.webmanifest?v=2026.11.05.1" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.11.16.1" />
+  <link rel="apple-touch-icon" href="icon.svg?v=2026.11.16.1" />
+  <link rel="manifest" href="manifest.webmanifest?v=2026.11.16.1" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=2026.11.05.1" />
+  <link rel="stylesheet" href="styles.css?v=2026.11.16.1" />
   <script>
     // Resolve atmosphere before first paint to prevent a flash of the wrong theme.
     (function () {
@@ -69,11 +69,13 @@
   </header>
 
   <div class="scoreboard" aria-live="polite">
+    <span class="scoreboard__team" id="cupNameLeft" hidden></span>
     <span class="team-chip team-chip--left" role="img" aria-label="Blue"></span>
     <span class="scoreboard__num" id="scoreLeft">0</span>
     <span class="scoreboard__dash">–</span>
     <span class="scoreboard__num" id="scoreRight">0</span>
     <span class="team-chip team-chip--right" role="img" aria-label="Orange"></span>
+    <span class="scoreboard__team" id="cupNameRight" hidden></span>
   </div>
   <div class="match-clock" id="matchClock" hidden aria-live="off"></div>
 
@@ -117,6 +119,52 @@
   <ul class="roster roster--left" id="rosterLeft" hidden aria-label="Blue team"></ul>
   <ul class="roster roster--right" id="rosterRight" hidden aria-label="Orange team"></ul>
 
+  <!-- Championship mode -->
+  <section class="cup-lobby" id="cupLobby" hidden aria-labelledby="cupLobbyTitle">
+    <div class="cup-lobby__head">
+      <h1 class="cup-lobby__title" id="cupLobbyTitle">🏆 The Championship</h1>
+      <p class="cup-lobby__sub">Scan to join, then pick a team on your phone. Teams are evened up at kickoff, then it's knockout until one team is left.</p>
+    </div>
+    <div class="cup-lobby__body">
+      <div class="cup-lobby__join">
+        <div class="cup-lobby__qr" id="cupQr"></div>
+        <span class="join-card__label">Room</span>
+        <span class="room-code" id="cupRoom">····</span>
+        <span class="cup-lobby__url mono" id="cupUrl"></span>
+      </div>
+      <div class="cup-teams" id="cupTeams"></div>
+    </div>
+    <p class="cup-lobby__waiting" id="cupWaiting"></p>
+    <div class="cup-lobby__foot">
+      <span class="cup-lobby__vip" id="cupVip"></span>
+      <button type="button" class="btn btn--primary cup-go" id="cupStart">Start the championship</button>
+    </div>
+  </section>
+
+  <section class="cup-board" id="cupBoard" hidden aria-live="polite">
+    <div class="cup-board__label" id="cupBoardLabel"></div>
+    <div class="cup-board__vs" id="cupBoardVs"></div>
+    <p class="cup-board__moves" id="cupBoardMoves" hidden></p>
+    <div class="cup-board__row">
+      <span class="cup-board__count" id="cupBoardCount"></span>
+      <button type="button" class="btn btn--primary cup-go" id="cupBoardGo">Kick off now ▶</button>
+    </div>
+    <div class="cup-bracket" id="cupBracket"></div>
+  </section>
+
+  <section class="cup-champion" id="cupChampion" hidden aria-live="polite">
+    <div class="cup-champion__trophy" aria-hidden="true">🏆</div>
+    <div class="cup-champion__word">CHAMPIONS</div>
+    <div class="cup-champion__team" id="cupChampTeam"></div>
+    <ul class="cup-champion__names" id="cupChampNames"></ul>
+    <p class="cup-champion__boot" id="cupChampBoot" hidden></p>
+    <div class="cup-champion__actions">
+      <button type="button" class="btn btn--primary cup-go" id="cupAgain">New championship</button>
+      <button type="button" class="btn cup-go" id="cupExit">Back to normal play</button>
+    </div>
+    <div class="cup-bracket cup-bracket--small" id="cupChampBracket"></div>
+  </section>
+
   <dialog class="modal glass" id="settings" aria-labelledby="settingsTitle">
     <div class="modal__head">
       <h2 id="settingsTitle">Settings</h2>
@@ -131,6 +179,43 @@
         <button type="button" class="theme-chip" data-theme-val="twilight">&#127750; Twilight</button>
         <button type="button" class="theme-chip" data-theme-val="night">&#127769; Night</button>
         <button type="button" class="theme-chip" data-theme-val="random">&#127922; Random</button>
+      </div>
+    </section>
+    <section class="modal__section">
+      <h3>&#127942; Championship</h3>
+      <label class="toggle">
+        <input type="checkbox" id="cupToggle" />
+        <span class="toggle__text"><b>Championship mode</b><small>For a crowd (up to 48 phones): everyone joins and picks a team on their phone, the teams are evened up and drawn into a knockout bracket, and teams take turns on the pitch &mdash; semi-finals, then the final &mdash; until a champion is crowned. The first phone to join is the commissioner and can start it and kick off each match. Turn it off to go back to normal play; turn it back on to carry on.</small></span>
+      </label>
+      <div class="cup-settings" id="cupSettings" hidden>
+        <p class="muted cup-settings__locked" id="cupLocked" hidden>Teams and names are set for this championship; changes apply to the next one.</p>
+        <div class="cup-settings__row"><span>Teams</span>
+          <div class="theme-picker" id="cupSizePicker" role="radiogroup" aria-label="Teams">
+            <button type="button" class="theme-chip" data-size="4">4 &middot; semis + final</button>
+            <button type="button" class="theme-chip" data-size="8">8 &middot; adds quarter-finals</button>
+          </div>
+        </div>
+        <div class="cup-settings__row"><span>Matches</span>
+          <div class="theme-picker" id="cupLengthPicker" role="radiogroup" aria-label="Match length">
+            <button type="button" class="theme-chip" data-length="2">2 min</button>
+            <button type="button" class="theme-chip" data-length="3">3 min</button>
+            <button type="button" class="theme-chip" data-length="4">4 min</button>
+            <button type="button" class="theme-chip" data-length="5">5 min</button>
+          </div>
+        </div>
+        <div class="cup-settings__row"><span>Names</span>
+          <div class="theme-picker" id="cupThemePicker" role="radiogroup" aria-label="Team names">
+            <button type="button" class="theme-chip" data-names="feast">&#129411; Thanksgiving</button>
+            <button type="button" class="theme-chip" data-names="sky">&#9889; Sky</button>
+          </div>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="cupMergeToggle" />
+          <span class="toggle__text"><b>Everyone plays the final</b><small>Beaten teams join the team that knocked them out, so nobody sits out for long and the final is everybody.</small></span>
+        </label>
+        <div class="field-row">
+          <button type="button" class="btn" id="cupRestartBtn">New championship</button>
+        </div>
       </div>
     </section>
     <section class="modal__section">
@@ -176,13 +261,14 @@
     <p class="modal__foot muted">Sky Soccer <span id="version"></span> · part of the kashikoi cloud suite</p>
   </dialog>
 
-  <script src="js/util.js?v=2026.11.05.1"></script>
-  <script src="js/qr.js?v=2026.11.05.1"></script>
-  <script src="js/net.js?v=2026.11.05.1"></script>
-  <script src="js/face.js?v=2026.11.05.1"></script>
-  <script src="js/match.js?v=2026.11.05.1"></script>
-  <script src="js/render.js?v=2026.11.05.1"></script>
-  <script src="js/sound.js?v=2026.11.05.1"></script>
-  <script src="js/host.js?v=2026.11.05.1"></script>
+  <script src="js/util.js?v=2026.11.16.1"></script>
+  <script src="js/qr.js?v=2026.11.16.1"></script>
+  <script src="js/net.js?v=2026.11.16.1"></script>
+  <script src="js/face.js?v=2026.11.16.1"></script>
+  <script src="js/match.js?v=2026.11.16.1"></script>
+  <script src="js/cup.js?v=2026.11.16.1"></script>
+  <script src="js/render.js?v=2026.11.16.1"></script>
+  <script src="js/sound.js?v=2026.11.16.1"></script>
+  <script src="js/host.js?v=2026.11.16.1"></script>
 </body>
 </html>

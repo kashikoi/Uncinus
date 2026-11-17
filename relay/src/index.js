@@ -5,7 +5,9 @@ import { DurableObject } from "cloudflare:workers";
 
 const ROOM_RE = /^[A-HJ-NP-Z]{4}$/;
 const ID_RE = /^[a-z0-9]{6,16}$/;
-const MAX_PLAYERS = 12;
+// Phones per room. Normal games put at most 12 on the pitch (the host turns the rest away); championship mode
+// keeps everyone connected while teams take turns. (Not exported: workerd only accepts handlers as exports.)
+const MAX_PLAYERS = 48;
 const MAX_PLAYER_MSG = 2048;
 const MAX_HOST_MSG = 16384;
 
