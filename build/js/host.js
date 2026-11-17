@@ -206,7 +206,6 @@
         else if (d.t === "face" && knows(msg.from)) receiveFace(msg.from, d);
         else if (d.t === "team") pickTeam(msg.from, d.team);
         else if (d.t === "cup-pick") cupPick(msg.from, d.team);
-        else if (d.t === "cup-go" && state.cup && msg.from === C.vip(state.cup)) cupGo(d.phase);
         else if (d.t === "cheer") cheer(msg.from);
         return;
       }
@@ -708,12 +707,11 @@
     } else sendTo(id, cupMessage(id));
   }
 
-  // The commissioner's phone (or a button on the big screen) moves things along. A press only counts for the phase
-  // it was made in, and not in the moment right after a change — so a double tap or a second OK on the remote
-  // can't start the championship and skip the draw and warm-up in one go.
-  function cupGo(phase) {
+  // The buttons on the big screen move things along. A press right after a phase change is ignored, so a double
+  // click or a second OK on the remote can't start the championship and skip the draw and warm-up in one go.
+  function cupGo() {
     const cup = state.cup;
-    if (!cup || (phase && phase !== cup.phase) || performance.now() - state.cupPhaseAt < GO_GAP) return;
+    if (!cup || performance.now() - state.cupPhaseAt < GO_GAP) return;
     if (cup.phase === "lobby") C.start(cup);
     else if (cup.phase === "champion") restartCup();
     else C.skip(cup);
@@ -744,7 +742,6 @@
     const cup = state.cup;
     const people = [...cup.members.values()].filter((p) => p.connected).sort((a, b) => a.seq - b.seq);
     const tie = C.onPitch(cup) || C.current(cup);
-    const vip = C.vip(cup);
     return {
       t: "cup", on: true, phase: cup.phase, size: cup.size, timer: Math.ceil(cup.timer), merge: cup.merge,
       teams: cup.teams.map((t) => {
@@ -759,17 +756,16 @@
       need: C.needed(cup),
       missing: C.missing(cup),
       players: people.length,
-      vipName: vip ? cup.members.get(vip).name : null,
     };
   }
 
-  // What one phone needs: the shared picture plus its own team, side on the pitch, and commissioner powers.
+  // What one phone needs: the shared picture plus its own team and side on the pitch.
   function cupMessage(id, shared = cupShared()) {
     const cup = state.cup;
     const mem = cup.members.get(id);
     const p = state.match.players.get(id);
     return {
-      ...shared, mine: mem ? mem.team : null, side: p ? p.team : null, vip: id === C.vip(cup), note: C.note(cup, id),
+      ...shared, mine: mem ? mem.team : null, side: p ? p.team : null, note: C.note(cup, id),
       moved: cup.phase === "draw" && cup.moves.some((mv) => mv.id === id && mv.from !== null),
     };
   }
@@ -875,9 +871,7 @@
       .join("");
     const undecided = people.filter((p) => p.team === null);
     el.cupWaiting.textContent = undecided.length ? `Still picking: ${undecided.map((p) => p.name).join(", ")}` : people.length ? "" : "Waiting for the first player…";
-    const vip = C.vip(cup);
     const need = C.needed(cup);
-    el.cupVip.textContent = vip ? `👑 ${cup.members.get(vip).name} can start it from their phone.` : "The first phone to join can start it from their phone.";
     const wasDisabled = el.cupStart.disabled;
     el.cupStart.disabled = need > 0;
     el.cupStart.textContent = need > 0 ? `Need ${need} more player${need === 1 ? "" : "s"} to start` : `▶ Start the championship · ${people.length} players`;
@@ -1278,7 +1272,7 @@
       "scoreLeft", "scoreRight", "goalBanner", "goalWho", "teamPickToggle", "mayhemToggle", "flowerPicker", "powerPicker", "starToast", "goalWord", "matchClock", "periodBanner",
       "periodWord", "periodSub", "periodCount", "lengthPicker",
       "cupToggle", "cupSettings", "cupLocked", "cupSizePicker", "cupLengthPicker", "cupThemePicker", "cupMergeToggle", "cupRestartBtn",
-      "cupNameLeft", "cupNameRight", "cupLobby", "cupQr", "cupRoom", "cupUrl", "cupTeams", "cupWaiting", "cupVip", "cupStart",
+      "cupNameLeft", "cupNameRight", "cupLobby", "cupQr", "cupRoom", "cupUrl", "cupTeams", "cupWaiting", "cupStart",
       "cupBoard", "cupBoardLabel", "cupBoardVs", "cupBoardMoves", "cupBoardCount", "cupBoardGo", "cupBracket",
       "cupChampion", "cupChampTeam", "cupChampNames", "cupChampBoot", "cupChampBracket", "cupAgain", "cupExit",
       "botSizePicker", "botSkillPicker", "botCount",

@@ -68,9 +68,9 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
 - Protocol: host→player `you{name,team,teamName,color,number,pick,counts,sides}`, `period`, `clock`, `score{left,right}`, `goal{team,scorerId,
   scorerName,ownGoal,score}`, `star{on,secs}`, `big{on,secs}`, `flower{on,secs,points}`, `turkey{secs}`, `coma{on,secs}`, `full`; `goal` also has `points`; relay→player `welcome`, `host-left`, `host-back`.
   Championship: host→player `cup{on:true, phase, size, timer, merge, teams[{id,name,emoji,color,out,into,names}], tie, bracket, score,
-  champion, boot, need, missing, players, vipName, mine, side, vip, note, moved}` (per phone; never broadcast player ids) and `cup{on:false}`
+  champion, boot, need, missing, players, mine, side, note, moved}` (per phone; never broadcast player ids) and `cup{on:false}`
   (sent on every normal-mode greet, so a phone that last saw a championship goes back to the pad); player→host `cup-pick{team}`,
-  `cup-go{phase}` (commissioner only), `cheer` (spectators only, `CHEER_GAP`).
+  `cheer` (spectators only, `CHEER_GAP`). Phones can't move the championship along — only the big screen can.
 - **Championship mode** (Settings toggle `uncinus_cup_on`; settings `uncinus_cup_settings` {size 4|8, length 2–5, theme feast|sky,
   merge}; the championship itself is saved in `uncinus_cup` and its room code in `uncinus_cup_room`, so a reload — or a TV that
   restarts with fresh sessionStorage — resumes it in the same room and waiting phones reconnect on their own). `js/cup.js` is pure and unit-tested:
@@ -79,19 +79,18 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
   (earliest pickers stay; late pickers and the undecided fill gaps) and draws `rounds`; `finish` records a tie (coin toss if level —
   only by walkover/reset). `step` holds the warm-up countdown (at ≥ `WAIT_BACK`) while `missing` lists a team with nobody connected —
   never forfeit on the clock; a forced kickoff (`skip`) gives the present team a walkover. `merge` moves beaten members to the winner;
-  `note` is each phone's one-line status; the commissioner (`vip`) is the earliest-joined connected member. Team names/emoji/colours
+  `note` is each phone's one-line status. Team names/emoji/colours
   live in `THEMES` (Thanksgiving by default in November). Host: `state.cup`; only the current tie's connected members are on the
   pitch (`setupPitch`/`fillPitch`, tie `a` = left/blue, `b` = right/orange, `state.cupPitch` guards kickoff); `m.manual` makes `pre`
   wait for `M.startGame` and `full` hold; `m.maxPlayers` = 48; `C.finish` runs on the `full` period event and the cup's `result`
   phase shows the winner (the normal FULL TIME banner is skipped); `cupEvents` applies the latest phase once per drain;
-  `cupGo(phase)` = commissioner phone (`cup-go{phase}`) or the big-screen buttons (lobby Start, board Skip/Kick off now, trophy
-  New championship); presses for another phase, or within `GO_GAP` of a phase change, are ignored (double taps / repeated OK);
+  `cupGo()` = the big-screen buttons (lobby Start, board Skip/Kick off now; trophy New championship → `restartCup`); presses
+  within `GO_GAP` of a phase change are ignored (double clicks / repeated OK);
   `syncCup` sends every phone its `cup` message (debounced 150 ms) and saves. `M.clearPlayers` ends power-ups first (phones get
   `star/big/flower{on:false}`). The phone's `you` handler marks it on the pitch (`cup.side`) and `applyYou` restores the pitch
   colour/number whenever the pad shows. Settings "New game" becomes "Replay this match"
   (`C.replay`); the keyboard player is off in championship mode. Phone: `watching()` (cup on and not on the pitch, or the
-  trophy) → `body.cup-watch` hides the pad and shows `#cupScreen` (team picks, status card with live score, bracket, commissioner
-  button, Cheer); on the pitch the normal pad plus `#cupBar`. Big overlays avoid `backdrop-filter` (costly over the canvas on TVs).
+  trophy) → `body.cup-watch` hides the pad and shows `#cupScreen` (team picks, status card with live score, bracket, Cheer); on the pitch the normal pad plus `#cupBar`. Big overlays avoid `backdrop-filter` (costly over the canvas on TVs).
 - **Bots** (Settings → 🤖 Bots, saved in `uncinus_bots` {size 0–5 players per team, skill easy|normal|hard}). `js/bots.js` is
   pure and unit-tested: the host keeps `state.bots` (id → brain) and calls `AI.drive(m, brains, dt)` each frame before the
   physics; it steers through `M.setInput` exactly like a phone (run vector + kick counter), so bots obey the same floaty
@@ -103,8 +102,7 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
   `bot-<random>`, names `🤖 <Name>` (`AI.pickName`); `isLocal(id)` (keyboard or bot) gets no messages and is never
   disconnected or cleared by `welcome`/New room; `realPlayers()` excludes them. `fillBots()` runs every 0.5 s: normal
   play tops each side up to `size` minus the people on it (bots step off when people join); in a championship it works
-  only in the lobby, per team, with cup members flagged `bot` (`C.join(..., { bot: true })`, saved with the cup — `vip`
-  skips bots, `balance` moves bots before people, `C.remove` drops one). Bots belong to a mode: switching drops them, and
+  only in the lobby, per team, with cup members flagged `bot` (`C.join(..., { bot: true })`, saved with the cup — `balance` moves bots before people, `C.remove` drops one). Bots belong to a mode: switching drops them, and
   a saved championship re-adopts its bot members.
 - Ball–player contacts resolve in a rotating order (`m.turn`): otherwise whoever joined last wins every scrum (bots made
   it obvious; it affected people too).

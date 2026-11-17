@@ -1888,13 +1888,8 @@ body[data-cup="champion"] .roster {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   gap: 16px;
-}
-
-.cup-lobby__vip {
-  font-weight: 700;
-  font-size: 1.1rem;
 }
 
 .cup-go {

@@ -45,17 +45,14 @@ test("lobby: pick and switch freely; latecomers pick once, from the teams still 
   assert.equal(cup.members.get("late00001").home, alive);
 });
 
-test("starting needs a player per team; the commissioner is the earliest arrival still here", () => {
+test("starting needs a player per team", () => {
   const { cup, people } = lobby(3);
   assert.equal(C.needed(cup), 1);
   assert.equal(C.start(cup), null);
   assert.equal(cup.phase, "lobby");
-  assert.equal(C.vip(cup), people[0]);
   C.leave(cup, people[0]);
-  assert.equal(C.vip(cup), people[1]);
   assert.equal(C.needed(cup), 2, "only connected phones count");
   C.join(cup, people[0], "P0");
-  assert.equal(C.vip(cup), people[0], "rejoining keeps your place");
   C.join(cup, "extra0001", "X");
   assert.equal(C.needed(cup), 0);
   assert.ok(C.start(cup));
@@ -302,16 +299,14 @@ test("notes tell each phone where they stand", () => {
   assert.match(C.note(cup, waiting), /🏆 The .* are the champions!/);
 });
 
-test("bots: never the commissioner, first to move when teams are evened up, and remembered across a reload", () => {
+test("bots: first to move when teams are evened up, and remembered across a reload", () => {
   const cup = C.createCup({ size: 4, theme: "feast", rand: seeded(3) });
   C.join(cup, "bot-a", "🤖 Gizmo", { bot: true });
   C.join(cup, "bot-b", "🤖 Bolt", { bot: true });
   C.pick(cup, "bot-a", 0);
   C.pick(cup, "bot-b", 0);
-  assert.equal(C.vip(cup), null, "no person here yet");
   C.join(cup, "human001", "Ken");
   C.pick(cup, "human001", 0);
-  assert.equal(C.vip(cup), "human001");
   C.join(cup, "human002", "Ann");
   // Team 0 has two bots that picked before Ken; evening up must move a bot, not Ken.
   C.start(cup);

@@ -403,11 +403,6 @@
       renderCupList();
     } else applyYou();
     renderCupCard();
-    const go = cup.vip ? { lobby: "▶ Start the championship", draw: "Skip ▶", next: "Kick off now ▶", champion: "New championship" }[cup.phase] : null;
-    el.cupGo.hidden = !go || !watch;
-    el.cupGo.textContent = cup.phase === "lobby" && cup.need > 0 ? `Need ${plural(cup.need, "more player")} to start` : go || "";
-    el.cupGo.disabled = cup.phase === "lobby" && cup.need > 0;
-    el.cupBarGo.hidden = !cup.vip || cup.phase !== "next";
     el.cupCheer.hidden = !(cup.phase === "next" || cup.phase === "match" || cup.phase === "result");
   }
 
@@ -424,7 +419,7 @@
       vs = cupTeam(cup.mine) ? cupName(cup.mine) : "Pick your team";
       const players = Number(cup.players) || 0;
       if (cup.need > 0) sub = `${plural(players, "player")} in · need ${cup.need} more to start`;
-      else sub = cup.vip ? `${plural(players, "player")} in · start when everyone's here` : `${plural(players, "player")} in · ${cup.vipName || "the commissioner"} starts it`;
+      else sub = `${plural(players, "player")} in · it starts on the big screen`;
     } else if (cup.phase === "draw") {
       label = "🏆 The draw";
       vs = cupTeam(cup.mine) ? `You're on the ${cupName(cup.mine)}` : "Pick a team to jump in";
@@ -780,7 +775,7 @@
       "appVersion", "faceThumb", "faceImg", "faceBlank", "faceHint", "faceBtn", "faceClear", "cam", "camVideo", "camShot",
       "camError", "camCancel", "camSnap", "camRetake", "camUse", "teamPick", "pickLeft", "pickRight", "attackBar", "goalLeftLabel", "goalRightLabel", "attackArrow", "meClock", "periodScreen", "periodTitle",
       "periodSubtext", "periodCount", "pickLeftDir", "pickLeftText", "pickRightDir", "pickRightText",
-      "cupBar", "cupBarText", "cupBarGo", "cupScreen", "cupLabel", "cupVs", "cupSub", "cupNote", "cupPicks", "cupList", "cupGo", "cupCheer",
+      "cupBar", "cupBarText", "cupScreen", "cupLabel", "cupVs", "cupSub", "cupNote", "cupPicks", "cupList", "cupCheer",
     ].forEach((id) => (el[id] = $(id)));
     el.appVersion.textContent = `v${util.APP_VERSION}`;
 
@@ -793,9 +788,6 @@
       state.cup.mine = team;
       renderCupMode();
     });
-    const go = () => state.link && state.cup && state.link.send({ t: "cup-go", phase: state.cup.phase });
-    el.cupGo.addEventListener("click", go);
-    el.cupBarGo.addEventListener("click", go);
     el.cupCheer.addEventListener("click", cheer);
     setInterval(cupTick, 250);
 

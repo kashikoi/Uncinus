@@ -67,12 +67,12 @@ to normal play.
 
 1. **Huddle up.** Everyone scans the QR code (up to 48 phones). The big screen shows the teams filling up — 4 (or 8)
    themed teams: 🦃 Turkeys, 🥧 Pies, 🎃 Pumpkins, 🌽 Corn… in November, sky names (🌞 Suns, 🌙 Moons…) otherwise.
-   Each phone picks a team and can switch until kickoff. The first phone to join is the 👑 **commissioner**.
-2. **Kick it off.** The commissioner taps **Start the championship** (or press Start on the big screen; it needs at
-   least one player per team). Teams are evened up — the earliest pickers keep their team, late pickers and the
+   Each phone picks a team and can switch until kickoff.
+2. **Kick it off.** Whoever's at the big screen clicks **Start the championship** (it needs at least one player per
+   team). Teams are evened up — the earliest pickers keep their team, late pickers and the
    undecided fill the gaps — and drawn into a bracket: semi-finals, then the final (8 teams add quarter-finals).
 3. **Take turns.** Before each tie the two teams walk onto the pitch for a 30-second warm-up (phones buzz "YOU'RE
-   UP!") while the big screen shows who's playing and the bracket; the commissioner can kick off early. Ties are
+   UP!") while the big screen shows who's playing and the bracket; **Kick off now** on the big screen skips the wait. Ties are
    short timed games (2–5 min, default 4) with the usual half-time swap, and level at the end means next goal wins,
    so every tie has a winner. Everyone else's phone shows the live score, when they play next, and a 📣 **Cheer**
    button that floats emoji up the big screen.
@@ -82,7 +82,7 @@ to normal play.
 Options (Settings): 4 or 8 teams, match length, Thanksgiving or sky names, and **Everyone plays the final** —
 beaten teams join the team that knocked them out, so nobody sits out for long and the final is everybody.
 Latecomers can join mid-championship and pick any team still in it. If a team has nobody connected when its tie is
-due, the countdown waits for them ("Waiting for the 🥧 Pies to rejoin…"); the commissioner can kick off anyway,
+due, the countdown waits for them ("Waiting for the 🥧 Pies to rejoin…"); **Kick off now** on the big screen starts it anyway,
 which gives the other team a walkover. Turning the mode off pauses the championship (normal play resumes with up to
 12 on the pitch); turning it back on carries on from the warm-up of the interrupted tie. It also survives a reload
 or restart of the big screen: it reopens the same room and phones reconnect by themselves.
@@ -99,9 +99,9 @@ blocks through the same controls a phone sends (a run direction and kick presses
 tag.
 
 In a championship, bots fill every team in the lobby (pick your team and a bot makes room), play their matches, can
-win the Golden Boot, and never become the commissioner; once it starts, the teams stay as they are. To try a
+and win the Golden Boot; once it starts, the teams stay as they are. To try a
 championship on your own: Bots → 2 per team, switch on Championship mode, join with your phone, pick a team and
-start it.
+press Start on the big screen.
 
 ### On a TV
 

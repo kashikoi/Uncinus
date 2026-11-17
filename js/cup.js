@@ -78,8 +78,7 @@
   }
 
   // ---------- People ----------
-  // `bot`: a computer player (the host drives it). Bots never become commissioner, and they're the first to move
-  // when teams are evened up.
+  // `bot`: a computer player (the host drives it). Bots are the first to move when teams are evened up.
   function join(cup, id, name, { bot = false } = {}) {
     let p = cup.members.get(id);
     if (!p) {
@@ -118,13 +117,6 @@
     p.team = team;
     p.home = team;
     return true;
-  }
-
-  // The commissioner — whoever joined first and is still here (people only) — can start things from their phone.
-  function vip(cup) {
-    let best = null;
-    for (const p of cup.members.values()) if (p.connected && !p.bot && (!best || p.seq < best.seq)) best = p;
-    return best ? best.id : null;
   }
 
   const needed = (cup) => Math.max(0, cup.size - live(cup).length);
@@ -258,8 +250,8 @@
 
   function step(cup, dt) {
     if (cup.phase !== "draw" && cup.phase !== "next" && cup.phase !== "result") return;
-    // Never kick off on the clock without both teams: hold the countdown. (The commissioner can still kick off
-    // now, which gives the team that's here a walkover.)
+    // Never kick off on the clock without both teams: hold the countdown. (Kick off now on the big screen still
+    // works, which gives the team that's here a walkover.)
     if (missing(cup).length) {
       cup.timer = Math.max(cup.timer, WAIT_BACK);
       return;
@@ -432,7 +424,6 @@
     leave,
     remove,
     pick,
-    vip,
     needed,
     missing,
     start,

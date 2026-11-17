@@ -6,13 +6,13 @@
   <title>Sky Soccer — every phone is a player</title>
   <meta name="description" content="Party soccer in the clouds: the Mac is the pitch, every phone is a blocky player." />
   <meta name="theme-color" content="#0f172a" />
-  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.11.17.3" />
-  <link rel="apple-touch-icon" href="icon.svg?v=2026.11.17.3" />
-  <link rel="manifest" href="manifest.webmanifest?v=2026.11.17.3" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.11.17.4" />
+  <link rel="apple-touch-icon" href="icon.svg?v=2026.11.17.4" />
+  <link rel="manifest" href="manifest.webmanifest?v=2026.11.17.4" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=2026.11.17.3" />
+  <link rel="stylesheet" href="styles.css?v=2026.11.17.4" />
   <script>
     // Resolve atmosphere before first paint to prevent a flash of the wrong theme.
     (function () {
@@ -136,7 +136,6 @@
     </div>
     <p class="cup-lobby__waiting" id="cupWaiting"></p>
     <div class="cup-lobby__foot">
-      <span class="cup-lobby__vip" id="cupVip"></span>
       <button type="button" class="btn btn--primary cup-go" id="cupStart">Start the championship</button>
     </div>
   </section>
@@ -185,7 +184,7 @@
       <h3>&#127942; Championship</h3>
       <label class="toggle">
         <input type="checkbox" id="cupToggle" />
-        <span class="toggle__text"><b>Championship mode</b><small>For a crowd (up to 48 phones): everyone joins and picks a team on their phone, the teams are evened up and drawn into a knockout bracket, and teams take turns on the pitch &mdash; semi-finals, then the final &mdash; until a champion is crowned. The first phone to join is the commissioner and can start it and kick off each match. Turn it off to go back to normal play; turn it back on to carry on.</small></span>
+        <span class="toggle__text"><b>Championship mode</b><small>For a crowd (up to 48 phones): everyone joins and picks a team on their phone, the teams are evened up and drawn into a knockout bracket, and teams take turns on the pitch &mdash; semi-finals, then the final &mdash; until a champion is crowned. Start it and kick off each match with the buttons on this screen. Turn it off to go back to normal play; turn it back on to carry on.</small></span>
       </label>
       <div class="cup-settings" id="cupSettings" hidden>
         <p class="muted cup-settings__locked" id="cupLocked" hidden>Teams and names are set for this championship; changes apply to the next one.</p>
@@ -220,7 +219,7 @@
     </section>
     <section class="modal__section">
       <h3>&#129302; Bots</h3>
-      <p class="muted">Computer players keep the teams topped up, so anyone can play &mdash; even on your own. People always come first: when someone joins a team, one of its bots steps off. In a championship, bots fill every team in the lobby, play their matches, and never become the commissioner.</p>
+      <p class="muted">Computer players keep the teams topped up, so anyone can play &mdash; even on your own. People always come first: when someone joins a team, one of its bots steps off. In a championship, bots fill every team in the lobby and play their matches.</p>
       <div class="cup-settings__row"><span>Per team</span>
         <div class="theme-picker" id="botSizePicker" role="radiogroup" aria-label="Players per team with bots">
           <button type="button" class="theme-chip" data-bots="0">Off</button>
@@ -296,15 +295,15 @@
     <p class="modal__foot muted">Sky Soccer <span id="version"></span> · part of the kashikoi cloud suite</p>
   </dialog>
 
-  <script src="js/util.js?v=2026.11.17.3"></script>
-  <script src="js/qr.js?v=2026.11.17.3"></script>
-  <script src="js/net.js?v=2026.11.17.3"></script>
-  <script src="js/face.js?v=2026.11.17.3"></script>
-  <script src="js/match.js?v=2026.11.17.3"></script>
-  <script src="js/cup.js?v=2026.11.17.3"></script>
-  <script src="js/bots.js?v=2026.11.17.3"></script>
-  <script src="js/render.js?v=2026.11.17.3"></script>
-  <script src="js/sound.js?v=2026.11.17.3"></script>
-  <script src="js/host.js?v=2026.11.17.3"></script>
+  <script src="js/util.js?v=2026.11.17.4"></script>
+  <script src="js/qr.js?v=2026.11.17.4"></script>
+  <script src="js/net.js?v=2026.11.17.4"></script>
+  <script src="js/face.js?v=2026.11.17.4"></script>
+  <script src="js/match.js?v=2026.11.17.4"></script>
+  <script src="js/cup.js?v=2026.11.17.4"></script>
+  <script src="js/bots.js?v=2026.11.17.4"></script>
+  <script src="js/render.js?v=2026.11.17.4"></script>
+  <script src="js/sound.js?v=2026.11.17.4"></script>
+  <script src="js/host.js?v=2026.11.17.4"></script>
 </body>
 </html>
