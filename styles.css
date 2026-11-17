@@ -2462,3 +2462,50 @@ body.cup-watch .pad-bottom {
     transform: scale(1.06) rotate(-2deg);
   }
 }
+
+/* ---------- Turkey & food coma ---------- */
+.goal-flash.is-turkey {
+  background: radial-gradient(circle at 50% 35%, #fde68a 0 16%, #d97706 48%, #78350f 100%);
+  color: #fff;
+  padding: 0 24px;
+  text-align: center;
+  text-shadow: 0 2px 8px rgba(69, 26, 3, 0.6);
+}
+
+.goal-flash.is-coma {
+  background: linear-gradient(160deg, #312e81, #1e1b4b);
+  color: #e0e7ff;
+  padding: 0 24px;
+  text-align: center;
+}
+
+.goal-flash.is-turkey span,
+.goal-flash.is-coma span {
+  font-size: clamp(2rem, 11vw, 3.4rem);
+}
+
+body.is-coma .me {
+  border-color: #818cf8;
+  box-shadow: 0 0 0 3px #818cf8, 0 0 24px #4338ca;
+}
+
+/* Too stuffed to kick. */
+body.is-coma .kick-btn {
+  filter: grayscale(0.9) brightness(0.8);
+}
+
+body.is-coma .kick-btn::after {
+  content: "😴 stuffed";
+  position: absolute;
+  right: 14px;
+  bottom: 8px;
+  z-index: 2;
+  font-size: 0.8rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.power-picker {
+  margin: 10px 0 0 54px;
+}

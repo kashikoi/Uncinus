@@ -42,6 +42,9 @@ Settings → **New game** restarts.
 for 10 seconds — they ghost straight through other players and nobody else can touch the ball, so they can dribble
 the length of the pitch uncontested. Now and then a mushroom sprouts too: eat it to grow 2.5× bigger (and heavier)
 for 12 seconds and shove everyone around. Grab a power flower and, for 20 seconds, every goal you score counts double (Settings → Flower: ×2, ×3 or ×5).
+And now and then a 🦃 turkey gets loose: it runs from anyone who comes near and flutters away when cornered — catch it
+and the other team falls into a 😴 food coma for 8 seconds (slow, and they can't kick). Each power (⭐ 🍄 🌸 🦃) has its
+own on/off switch under Mayhem in Settings; all are on by default.
 
 Which way? Each goal (net, frame and end line) is painted in the colour of the team **defending** it, and big chevrons in each half point the way that team attacks. Each
 phone also shows a mini pitch: your goal says *Defend*, the other one pulses *Score*.

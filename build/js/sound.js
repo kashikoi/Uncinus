@@ -364,6 +364,53 @@
     }
   }
 
+  // Turkey caught: "gobble-gobble-gobble" — a throaty, rapidly warbling call, twice, falling in pitch.
+  function gobble() {
+    if (!ready()) return;
+    const t0 = ctx.currentTime + 0.02;
+    const dest = out(0, 1);
+    for (const [at, f0, dur] of [[0, 420, 0.42], [0.5, 360, 0.5]]) {
+      const t = t0 + at;
+      const v = ctx.createOscillator();
+      v.type = "sawtooth";
+      v.frequency.setValueAtTime(f0, t);
+      v.frequency.exponentialRampToValueAtTime(f0 * 0.62, t + dur);
+      // The burble: fast pitch and volume wobble.
+      const lfo = ctx.createOscillator();
+      lfo.frequency.value = 23;
+      const depth = ctx.createGain();
+      depth.gain.value = f0 * 0.22;
+      lfo.connect(depth).connect(v.frequency);
+      const trem = ctx.createGain();
+      trem.gain.value = 0.5;
+      const tremDepth = ctx.createGain();
+      tremDepth.gain.value = 0.5;
+      lfo.connect(tremDepth).connect(trem.gain);
+      const e = env(dest, t, 0.55, 0.02, dur - 0.08, 0.06);
+      for (const [f, q, g] of [[700, 5, 1], [1300, 7, 0.5]]) {
+        const fg = ctx.createGain();
+        fg.gain.value = g;
+        v.connect(trem).connect(filter("bandpass", f, q)).connect(fg).connect(e);
+      }
+      for (const node of [v, lfo]) {
+        node.start(t);
+        node.stop(t + dur + 0.05);
+      }
+    }
+  }
+
+  // Turkey flutter-hop: a quick flurry of wingbeats.
+  function flap(pan) {
+    if (!ready()) return;
+    const t = ctx.currentTime + 0.01;
+    const dest = out(pan, 0.8);
+    for (let i = 0; i < 4; i++) {
+      const at = t + i * 0.055;
+      const s = noiseSrc(at, 0.05);
+      s.connect(filter("bandpass", 900 + i * 150, 1.2)).connect(env(dest, at, 0.35, 0.005, 0.01, 0.04));
+    }
+  }
+
   root.Uncinus = root.Uncinus || {};
   root.Uncinus.sound = {
     get enabled() {
@@ -383,5 +430,7 @@
     airHorn,
     whoosh,
     whistle,
+    gobble,
+    flap,
   };
 })(window);

@@ -68,7 +68,7 @@
     state.cup = null;
     state.you = null;
     renderCupMode();
-    document.body.classList.remove("is-star", "is-big", "is-flower");
+    document.body.classList.remove("is-star", "is-big", "is-flower", "is-coma");
     el.playScreen.hidden = true;
     el.joinScreen.hidden = false;
     el.joinError.hidden = !error;
@@ -155,6 +155,12 @@
         break;
       case "flower":
         setFlower(Boolean(msg.on), msg.points);
+        break;
+      case "coma":
+        setComa(Boolean(msg.on), msg.secs);
+        break;
+      case "turkey":
+        powerFlash("is-turkey", "🦃 GOBBLE GOBBLE!", "You caught the turkey — the other team's in a food coma. Go score!", [80, 40, 80, 40, 80, 40, 250]);
         break;
       case "goal":
         renderScore(msg.score || {});
@@ -276,9 +282,16 @@
     if (on) powerFlash("is-flower", "🌸 FLOWER POWER!", `Your goals count ${n}× — go score!`, [60, 30, 60, 30, 60, 30, 200]);
   }
 
+  // Stuffed: slow and can't kick until it wears off.
+  function setComa(on, secs) {
+    document.body.classList.toggle("is-coma", on);
+    const n = Number.isInteger(secs) ? secs : 8;
+    if (on) powerFlash("is-coma", "😴 FOOD COMA!", `They caught the turkey — you're stuffed: slow, and no kicking for ${n} seconds.`, [400, 200, 400]);
+  }
+
   function powerFlash(kind, text, sub, buzz) {
     if (navigator.vibrate) navigator.vibrate(buzz);
-    el.goalFlash.classList.remove("is-ours", "is-star", "is-big", "is-flower", "is-swap", "is-golden");
+    el.goalFlash.classList.remove("is-ours", "is-star", "is-big", "is-flower", "is-swap", "is-golden", "is-coma", "is-turkey");
     el.goalFlash.classList.add(kind);
     el.goalFlashText.textContent = text;
     el.goalFlashWho.textContent = sub;
@@ -295,7 +308,7 @@
 
   function flashGoal(msg) {
     if (watching()) return;
-    el.goalFlash.classList.remove("is-star", "is-big", "is-flower");
+    el.goalFlash.classList.remove("is-star", "is-big", "is-flower", "is-coma", "is-turkey");
     const ours = msg.team === state.team;
     const mine = msg.scorerId === state.id;
     el.goalFlash.classList.toggle("is-ours", ours);
@@ -380,7 +393,7 @@
     el.cupBar.hidden = !cup || watch;
     if (!cup) return;
     if (watch) {
-      document.body.classList.remove("is-star", "is-big", "is-flower");
+      document.body.classList.remove("is-star", "is-big", "is-flower", "is-coma");
       const team = cupTeam(cup.mine);
       el.meSwatch.style.backgroundColor = team ? cupColor(team) : "";
       el.meNumber.textContent = team ? team.emoji : "";

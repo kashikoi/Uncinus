@@ -155,7 +155,7 @@
       // A dead ball at our feet: boot it, as long as that doesn't send it back toward our own goal.
       else if (ready && brain.stuck > STUCK_TIME * (blocked ? 2 : 1) && (-px * dir) / dBall > -0.2) kick = true;
     } else {
-      const items = [m.star, m.shroom, m.flower].filter(Boolean);
+      const items = [m.star, m.shroom, m.flower, m.turkey].filter(Boolean);
       const item = items.find((it) => Math.hypot(it.x - p.x, it.y - p.y) < 260);
       if (item) {
         tx = item.x; // Mayhem: grab a power-up that's close by

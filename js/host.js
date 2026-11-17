@@ -11,6 +11,7 @@
   const TEAM_PICK_KEY = "uncinus_team_pick";
   const MAYHEM_KEY = "uncinus_mayhem";
   const FLOWER_KEY = "uncinus_flower_points"; // what a goal is worth with flower power
+  const POWERS_KEY = "uncinus_powers"; // which Mayhem powers are switched on (all, by default)
   const LENGTH_KEY = "uncinus_length";
   const CUP_ON_KEY = "uncinus_cup_on";
   const CUP_KEY = "uncinus_cup"; // the championship in progress, so a reload of the big screen picks it back up
@@ -273,6 +274,14 @@
         sendTo(ev.id, { t: "flower", on: true, secs: M.FLOWER_POWER, points: state.match.flowerPoints });
       } else if (ev.type === "flower-end") {
         sendTo(ev.id, { t: "flower", on: false });
+      } else if (ev.type === "turkey-spawn") {
+        showStarToast("🦃 A turkey's loose — catch it!");
+      } else if (ev.type === "turkey-get") {
+        showStarToast(`🦃 ${ev.name} caught the turkey — FOOD COMA for the other team!`);
+        sendTo(ev.id, { t: "turkey", secs: M.COMA_POWER });
+        for (const id of ev.victims) sendTo(id, { t: "coma", on: true, secs: M.COMA_POWER });
+      } else if (ev.type === "coma-end") {
+        sendTo(ev.id, { t: "coma", on: false });
       }
     }
   }
@@ -294,6 +303,8 @@
     } else if (ev.type === "goal") S.crowd();
     else if (ev.type === "shroom-get") S.grow();
     else if (ev.type === "flower-get") S.fanfare();
+    else if (ev.type === "turkey-get") S.gobble();
+    else if (ev.type === "turkey-hop") S.flap(panAt(ev.x) * 0.7);
     else if (ev.type === "star-get") S.starOn(M.STAR_POWER);
     else if (ev.type === "star-end") S.starOff();
     else if (ev.type === "period") {
@@ -461,6 +472,26 @@
     state.teamPick = get(TEAM_PICK_KEY);
     M.setMayhem(state.match, get(MAYHEM_KEY));
     M.setFlowerPoints(state.match, Number(stored(FLOWER_KEY)) || M.FLOWER_POINTS);
+    try {
+      const saved = JSON.parse(stored(POWERS_KEY) || "{}") || {};
+      for (const kind of M.POWERS) if (typeof saved[kind] === "boolean") M.setPower(state.match, kind, saved[kind]);
+    } catch {
+      // All powers on.
+    }
+  }
+
+  function togglePower(kind) {
+    M.setPower(state.match, kind, !state.match.powers[kind]);
+    store(POWERS_KEY, JSON.stringify(state.match.powers));
+    updatePowerPicker();
+  }
+
+  function updatePowerPicker() {
+    el.powerPicker.querySelectorAll("[data-power]").forEach((c) => {
+      const on = state.match.powers[c.dataset.power];
+      c.classList.toggle("is-active", on);
+      c.setAttribute("aria-pressed", String(on));
+    });
   }
 
   function setFlowerPoints(points) {
@@ -1139,6 +1170,7 @@
     el.teamPickToggle.checked = state.teamPick;
     el.mayhemToggle.checked = state.match.mayhem;
     updateFlowerPicker();
+    updatePowerPicker();
     // In a championship, "New game" replays the tie being played (from its warm-up).
     el.resetBtn.textContent = state.cup ? "Replay this match" : "New game";
     el.resetBtn.disabled = Boolean(state.cup) && state.cup.phase !== "match";
@@ -1243,7 +1275,7 @@
       "pitch", "status", "statusText", "kbBtn", "fsBtn", "settingsBtn", "joinCard", "joinMini", "joinClose", "qr", "miniQr",
       "roomCode", "miniRoom", "joinUrl", "joinLink", "emptyHint", "banner", "bannerText", "bannerBtn", "settings",
       "soundBtn", "soundOn", "soundOff", "themePicker", "relayInput", "relaySave", "relayReset", "relayError", "newRoomBtn", "resetBtn", "version", "appVersion", "settingsClose",
-      "scoreLeft", "scoreRight", "goalBanner", "goalWho", "teamPickToggle", "mayhemToggle", "flowerPicker", "starToast", "goalWord", "matchClock", "periodBanner",
+      "scoreLeft", "scoreRight", "goalBanner", "goalWho", "teamPickToggle", "mayhemToggle", "flowerPicker", "powerPicker", "starToast", "goalWord", "matchClock", "periodBanner",
       "periodWord", "periodSub", "periodCount", "lengthPicker",
       "cupToggle", "cupSettings", "cupLocked", "cupSizePicker", "cupLengthPicker", "cupThemePicker", "cupMergeToggle", "cupRestartBtn",
       "cupNameLeft", "cupNameRight", "cupLobby", "cupQr", "cupRoom", "cupUrl", "cupTeams", "cupWaiting", "cupVip", "cupStart",
@@ -1283,6 +1315,10 @@
     });
     el.teamPickToggle.addEventListener("change", () => setRule(TEAM_PICK_KEY, el.teamPickToggle.checked));
     el.mayhemToggle.addEventListener("change", () => setRule(MAYHEM_KEY, el.mayhemToggle.checked));
+    el.powerPicker.addEventListener("click", (ev) => {
+      const chip = ev.target.closest("[data-power]");
+      if (chip) togglePower(chip.dataset.power);
+    });
     el.flowerPicker.addEventListener("click", (ev) => {
       const chip = ev.target.closest("[data-points]");
       if (chip) setFlowerPoints(Number(chip.dataset.points));

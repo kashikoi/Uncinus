@@ -50,6 +50,23 @@
   const FLOWER_GAP_MIN = 45;
   const FLOWER_GAP_MAX = 90;
 
+  // ...and a turkey gets loose now and then: it scurries about, flapping, and runs from anyone who comes close.
+  // Catch it and the other team falls into a food coma — stuffed, they move at COMA_SLOW speed and can't kick.
+  const TURKEY_R = 24;
+  const TURKEY_LIFE = 20; // seconds before it flaps off the pitch
+  const TURKEY_SPEED = 210; // pottering about
+  const TURKEY_FLEE = 440; // running away: faster than a player runs, slower than a dash
+  const TURKEY_SCARE = 260; // how close a player gets before it bolts
+  const TURKEY_HOP = 760; // a flapping flutter-hop sideways when someone's right on top of it…
+  const TURKEY_HOP_NEAR = 95;
+  const TURKEY_HOP_GAP = 1.1; // …then it needs a moment to get its breath back
+  const COMA_POWER = 8; // seconds of food coma
+  const COMA_SLOW = 0.45;
+  const TURKEY_GAP_MIN = 50;
+  const TURKEY_GAP_MAX = 95;
+  // The Mayhem powers, each of which can be switched off.
+  const POWERS = ["star", "shroom", "flower", "turkey"];
+
   // Stationary pick-ups: where they live on the match, the player field they power up, and their timings.
   // Only one player at a time holds each kind of power.
   const ITEMS = {
@@ -112,6 +129,9 @@
       shroomIn: 0,
       flower: null,
       flowerIn: 0,
+      turkey: null,
+      turkeyIn: 0,
+      powers: { star: true, shroom: true, flower: true, turkey: true },
       rand: Math.random,
       flowerPoints: FLOWER_POINTS,
       turn: 0, // rotates which player's ball contact resolves first
@@ -174,6 +194,7 @@
       star: 0,
       big: 0,
       flower: 0,
+      coma: 0,
       scale: 1,
       connected: true,
       goneFor: 0,
@@ -244,7 +265,7 @@
   }
 
   function kick(m, p) {
-    if (p.cooldown > 0 || !p.connected) return false;
+    if (p.cooldown > 0 || !p.connected || p.coma > 0) return false;
     const mag = Math.hypot(p.input.x, p.input.y);
     const dir = mag > 0.2 ? Math.atan2(p.input.y, p.input.x) : p.facing;
     p.vx += Math.cos(dir) * DASH_SPEED;
@@ -511,6 +532,7 @@
   }
 
   const starGap = (m) => STAR_GAP_MIN + m.rand() * (STAR_GAP_MAX - STAR_GAP_MIN);
+  const turkeyGap = (m) => TURKEY_GAP_MIN + m.rand() * (TURKEY_GAP_MAX - TURKEY_GAP_MIN);
   const itemGap = (m, kind) => ITEMS[kind].gapMin + m.rand() * (ITEMS[kind].gapMax - ITEMS[kind].gapMin);
 
   function clearPowerUps(m) {
@@ -528,6 +550,22 @@
         if (p[item.field] > 0) m.events.push({ type: `${kind}-end`, id: p.id });
         p[item.field] = 0;
       }
+    }
+    m.turkey = null;
+    m.turkeyIn = turkeyGap(m);
+    for (const p of m.players.values()) {
+      if (p.coma > 0) m.events.push({ type: "coma-end", id: p.id });
+      p.coma = 0;
+    }
+  }
+
+  // Switch one Mayhem power on or off; switching it off clears it from the pitch (powers already held run out).
+  function setPower(m, kind, on) {
+    if (!POWERS.includes(kind)) return;
+    m.powers[kind] = Boolean(on);
+    if (!on && m[kind]) {
+      m[kind] = null;
+      m.events.push({ type: `${kind}-gone` });
     }
   }
 
@@ -557,7 +595,7 @@
   }
 
   function stepStar(m, dt, list) {
-    if (!m.mayhem || m.phase !== "play" || !playing(m)) return;
+    if (!m.mayhem || !m.powers.star || m.phase !== "play" || !playing(m)) return;
     const s = m.star;
     if (!s) {
       if (m.powered) return;
@@ -593,7 +631,7 @@
 
   // Mushrooms and flowers sprout in place and wait to be picked up.
   function stepItem(m, dt, list, kind) {
-    if (!m.mayhem || m.phase !== "play" || !playing(m)) return;
+    if (!m.mayhem || !m.powers[kind] || m.phase !== "play" || !playing(m)) return;
     const item = ITEMS[kind];
     const it = m[kind];
     if (!it) {
@@ -624,6 +662,117 @@
     }
   }
 
+  // The turkey: wanders in fits and starts, bolts from the nearest players, steers clear of the walls.
+  function stepTurkey(m, dt, list) {
+    if (!m.mayhem || !m.powers.turkey || m.phase !== "play" || !playing(m)) return;
+    const tk = m.turkey;
+    if (!tk) {
+      if (list.some((p) => p.coma > 0)) return;
+      m.turkeyIn -= dt;
+      if (m.turkeyIn <= 0) {
+        const a = m.rand() * Math.PI * 2;
+        m.turkey = { ...randomSpot(m, 90), vx: 0, vy: 0, heading: a, pause: 0, age: 0, scared: false, hop: 0, flap: 0 };
+        m.events.push({ type: "turkey-spawn", x: m.turkey.x, y: m.turkey.y });
+      }
+      return;
+    }
+    tk.age += dt;
+    if (tk.age >= TURKEY_LIFE) {
+      m.turkey = null;
+      m.turkeyIn = turkeyGap(m);
+      m.events.push({ type: "turkey-gone" });
+      return;
+    }
+    for (const p of list) {
+      if (!p.connected || !m.players.has(p.id)) continue;
+      if (touches(p, tk.x, tk.y, TURKEY_R)) {
+        m.turkey = null;
+        m.turkeyIn = turkeyGap(m);
+        const victims = [];
+        for (const q of m.players.values()) {
+          if (q.team === p.team) continue;
+          q.coma = COMA_POWER;
+          victims.push(q.id);
+        }
+        m.events.push({ type: "turkey-get", id: p.id, name: p.name, team: p.team, victims, x: tk.x, y: tk.y });
+        return;
+      }
+    }
+    // Run from everyone close by (nearer = scarier), otherwise potter about, pecking now and then.
+    let fx = 0;
+    let fy = 0;
+    let near = null;
+    for (const p of list) {
+      const dx = tk.x - p.x;
+      const dy = tk.y - p.y;
+      const d = Math.hypot(dx, dy);
+      if (d < TURKEY_SCARE && d > 1e-6) {
+        const w = (TURKEY_SCARE - d) / TURKEY_SCARE;
+        fx += (dx / d) * w;
+        fy += (dy / d) * w;
+      }
+      if (!near || d < near.d) near = { d, dx, dy, p };
+    }
+    tk.hop = Math.max(0, tk.hop - dt);
+    tk.flap = Math.max(0, tk.flap - dt);
+    if (near && near.d < TURKEY_HOP_NEAR + half(near.p) && tk.hop === 0) {
+      // Flutter-hop: burst sideways (to whichever side has more room), away from the nearest player.
+      const d = near.d || 1;
+      let side = m.rand() < 0.5 ? 1 : -1;
+      const sx = (-near.dy / d) * side;
+      const sy = (near.dx / d) * side;
+      if ((sy < 0 && tk.y < PITCH.T + 150) || (sy > 0 && tk.y > PITCH.B - 150) || (sx < 0 && tk.x < PITCH.L + 150) || (sx > 0 && tk.x > PITCH.R - 150)) side = -side;
+      const ax = (-near.dy / d) * side * 0.8 + (near.dx / d) * 0.6;
+      const ay = (near.dx / d) * side * 0.8 + (near.dy / d) * 0.6;
+      const a = Math.hypot(ax, ay) || 1;
+      tk.vx = (ax / a) * TURKEY_HOP;
+      tk.vy = (ay / a) * TURKEY_HOP;
+      tk.hop = TURKEY_HOP_GAP;
+      tk.flap = 0.35;
+      m.events.push({ type: "turkey-hop", x: tk.x, y: tk.y });
+    }
+    const margin = 120;
+    const wall = (v, lo, hi) => (v < lo + margin ? (lo + margin - v) / margin : v > hi - margin ? -(v - (hi - margin)) / margin : 0);
+    const wx = wall(tk.x, PITCH.L, PITCH.R);
+    const wy = wall(tk.y, PITCH.T, PITCH.B);
+    let tx;
+    let ty;
+    tk.scared = Math.hypot(fx, fy) > 0.05;
+    if (tk.scared) {
+      // Bolt away, jinking a little, and turn along the walls rather than into them.
+      const ax = fx + wx * 1.4 + (m.rand() - 0.5) * 0.5;
+      const ay = fy + wy * 1.4 + (m.rand() - 0.5) * 0.5;
+      const a = Math.hypot(ax, ay) || 1;
+      tx = (ax / a) * TURKEY_FLEE;
+      ty = (ay / a) * TURKEY_FLEE;
+      tk.heading = Math.atan2(ty, tx);
+      tk.pause = 0;
+    } else {
+      tk.pause -= dt;
+      if (tk.pause < -1.2 - m.rand() * 2) tk.pause = 0.4 + m.rand() * 0.7; // stop to peck
+      tk.heading += (m.rand() - 0.5) * 6 * dt + (wx || wy ? Math.sign(Math.sin(Math.atan2(wy, wx) - tk.heading)) * 3 * dt : 0);
+      const sp = tk.pause > 0 ? 0 : TURKEY_SPEED;
+      tx = Math.cos(tk.heading) * sp;
+      ty = Math.sin(tk.heading) * sp;
+    }
+    const kk = tk.flap > 0 ? 0 : Math.min(1, 9 * dt); // mid-hop it just flies
+    tk.vx += (tx - tk.vx) * kk;
+    tk.vy += (ty - tk.vy) * kk;
+    tk.x += tk.vx * dt;
+    tk.y += tk.vy * dt;
+    const r = TURKEY_R + 6;
+    if (tk.x < PITCH.L + r || tk.x > PITCH.R - r) {
+      tk.vx *= -0.5;
+      tk.heading = Math.PI - tk.heading;
+    }
+    if (tk.y < PITCH.T + r || tk.y > PITCH.B - r) {
+      tk.vy *= -0.5;
+      tk.heading = -tk.heading;
+    }
+    tk.x = clamp(tk.x, PITCH.L + r, PITCH.R - r);
+    tk.y = clamp(tk.y, PITCH.T + r, PITCH.B - r);
+  }
+
   function step(m, dtRaw) {
     const dt = clamp(dtRaw, 0, 0.05);
     m.t += dt;
@@ -651,14 +800,19 @@
           if (p[item.field] === 0) m.events.push({ type: `${kind}-end`, id: p.id });
         }
       }
+      if (p.coma > 0) {
+        p.coma = Math.max(0, p.coma - dt);
+        if (p.coma === 0) m.events.push({ type: "coma-end", id: p.id });
+      }
       const target = p.big > 0 ? BIG_SCALE : 1;
       p.scale += (target - p.scale) * Math.min(1, GROW_RATE * dt);
       if (Math.abs(target - p.scale) < 0.002) p.scale = target;
       p.dash = Math.max(0, p.dash - dt);
       // While dashing, momentum wins; otherwise ease toward the stick (sluggish on purpose).
       const kk = p.dash > 0 ? k * 0.15 : k;
-      p.vx += (p.input.x * MAX_SPEED - p.vx) * kk;
-      p.vy += (p.input.y * MAX_SPEED - p.vy) * kk;
+      const top = MAX_SPEED * (p.coma > 0 ? COMA_SLOW : 1); // a food coma slows you right down
+      p.vx += (p.input.x * top - p.vx) * kk;
+      p.vy += (p.input.y * top - p.vy) * kk;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       if (Math.hypot(p.vx, p.vy) > 25) p.facing = Math.atan2(p.vy, p.vx);
@@ -681,6 +835,7 @@
     m.powered = list.some((p) => p.star > 0);
     stepStar(m, dt, list);
     for (const kind of Object.keys(ITEMS)) stepItem(m, dt, list, kind);
+    stepTurkey(m, dt, list);
     for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) collidePlayers(m, list[i], list[j]);
 
     // Substep the ball so fast shots don't tunnel through players or posts.
@@ -745,6 +900,16 @@
     FLOWER_POWER,
     FLOWER_POINTS,
     FLOWER_CHOICES,
+    TURKEY_R,
+    TURKEY_LIFE,
+    TURKEY_SPEED,
+    TURKEY_FLEE,
+    TURKEY_SCARE,
+    TURKEY_GAP_MIN,
+    TURKEY_GAP_MAX,
+    COMA_POWER,
+    COMA_SLOW,
+    POWERS,
     FLOWER_GAP_MIN,
     FLOWER_GAP_MAX,
     DISCONNECT_GRACE,
@@ -763,6 +928,7 @@
     setTeam,
     setMayhem,
     setFlowerPoints,
+    setPower,
     disconnectPlayer,
     sanitizeInput,
     setInput,

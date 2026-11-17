@@ -6,13 +6,13 @@
   <title>Sky Soccer — every phone is a player</title>
   <meta name="description" content="Party soccer in the clouds: the Mac is the pitch, every phone is a blocky player." />
   <meta name="theme-color" content="#0f172a" />
-  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.11.17.2" />
-  <link rel="apple-touch-icon" href="icon.svg?v=2026.11.17.2" />
-  <link rel="manifest" href="manifest.webmanifest?v=2026.11.17.2" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.11.17.3" />
+  <link rel="apple-touch-icon" href="icon.svg?v=2026.11.17.3" />
+  <link rel="manifest" href="manifest.webmanifest?v=2026.11.17.3" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=2026.11.17.2" />
+  <link rel="stylesheet" href="styles.css?v=2026.11.17.3" />
   <script>
     // Resolve atmosphere before first paint to prevent a flash of the wrong theme.
     (function () {
@@ -248,8 +248,14 @@
       </label>
       <label class="toggle">
         <input type="checkbox" id="mayhemToggle" />
-        <span class="toggle__text"><b>&#11088; Mayhem mode</b><small>About once a minute a star drifts onto the pitch: grab it for 10 seconds as a ghost who runs through everyone, and only you can touch the ball. A mushroom sprouts now and then too: eat it to grow 2.5&times; bigger for 12 seconds and shove everyone around. And grab a power flower to make your goals count extra for 20 seconds.</small></span>
+        <span class="toggle__text"><b>&#11088; Mayhem mode</b><small>About once a minute a star drifts onto the pitch: grab it for 10 seconds as a ghost who runs through everyone, and only you can touch the ball. A mushroom sprouts now and then too: eat it to grow 2.5&times; bigger for 12 seconds and shove everyone around. And grab a power flower to make your goals count extra for 20 seconds. Plus, now and then a turkey gets loose: it runs from anyone who comes near and flutters away when cornered &mdash; catch it and the other team falls into a food coma (slow, and no kicking, for 8 seconds).</small></span>
       </label>
+      <div class="theme-picker power-picker" id="powerPicker" aria-label="Mayhem powers (tap to switch on or off)">
+        <button type="button" class="theme-chip" data-power="star" aria-pressed="true">&#11088; Star</button>
+        <button type="button" class="theme-chip" data-power="shroom" aria-pressed="true">&#127812; Mushroom</button>
+        <button type="button" class="theme-chip" data-power="flower" aria-pressed="true">&#127800; Flower</button>
+        <button type="button" class="theme-chip" data-power="turkey" aria-pressed="true">&#129411; Turkey</button>
+      </div>
       <div class="cup-settings__row flower-row"><span>&#127800; Flower</span>
         <div class="theme-picker" id="flowerPicker" role="radiogroup" aria-label="What a goal with flower power is worth">
           <button type="button" class="theme-chip" data-points="2">Goals &times;2</button>
@@ -290,15 +296,15 @@
     <p class="modal__foot muted">Sky Soccer <span id="version"></span> · part of the kashikoi cloud suite</p>
   </dialog>
 
-  <script src="js/util.js?v=2026.11.17.2"></script>
-  <script src="js/qr.js?v=2026.11.17.2"></script>
-  <script src="js/net.js?v=2026.11.17.2"></script>
-  <script src="js/face.js?v=2026.11.17.2"></script>
-  <script src="js/match.js?v=2026.11.17.2"></script>
-  <script src="js/cup.js?v=2026.11.17.2"></script>
-  <script src="js/bots.js?v=2026.11.17.2"></script>
-  <script src="js/render.js?v=2026.11.17.2"></script>
-  <script src="js/sound.js?v=2026.11.17.2"></script>
-  <script src="js/host.js?v=2026.11.17.2"></script>
+  <script src="js/util.js?v=2026.11.17.3"></script>
+  <script src="js/qr.js?v=2026.11.17.3"></script>
+  <script src="js/net.js?v=2026.11.17.3"></script>
+  <script src="js/face.js?v=2026.11.17.3"></script>
+  <script src="js/match.js?v=2026.11.17.3"></script>
+  <script src="js/cup.js?v=2026.11.17.3"></script>
+  <script src="js/bots.js?v=2026.11.17.3"></script>
+  <script src="js/render.js?v=2026.11.17.3"></script>
+  <script src="js/sound.js?v=2026.11.17.3"></script>
+  <script src="js/host.js?v=2026.11.17.3"></script>
 </body>
 </html>

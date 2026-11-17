@@ -145,6 +145,12 @@
             rot: this.rand() * 6, age: 0, life: 1 + this.rand() * 0.5, color: ["#f97316", "#fde047", "#ef4444"][i % 3], size: 5 + this.rand() * 4,
           });
         }
+      } else if (ev.type === "turkey-spawn") {
+        this.fx.push({ kind: "ring", x: ev.x, y: ev.y, age: 0, life: 0.6, color: "#b45309" });
+      } else if (ev.type === "turkey-hop") {
+        this.feathers(ev.x, ev.y, 6, 140);
+      } else if (ev.type === "turkey-get") {
+        this.feathers(ev.x, ev.y, 46, 320);
       } else if (ev.type === "shroom-get") {
         for (let i = 0; i < 3; i++) this.fx.push({ kind: "ring", x: ev.x, y: ev.y, age: 0, life: 0.5 + i * 0.25, color: i ? "#ef4444" : "#ffffff" });
       } else if (ev.type === "star-get") {
@@ -167,6 +173,19 @@
             rot: this.rand() * 6, age: 0, life: 1.6 + this.rand(), color: i % 3 === 0 ? "#ffffff" : color, size: 6 + this.rand() * 6,
           });
         }
+      }
+    }
+
+    // Turkey feathers flying: brown, rust, cream and a little red.
+    feathers(x, y, count, speed) {
+      const colors = ["#92400e", "#b45309", "#c2410c", "#fef3c7", "#78350f", "#dc2626"];
+      for (let i = 0; i < count; i++) {
+        const a = this.rand() * Math.PI * 2;
+        const sp = speed * (0.4 + this.rand() * 0.6);
+        this.fx.push({
+          kind: "confetti", x, y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - speed * 0.4,
+          rot: this.rand() * 6, age: 0, life: 0.9 + this.rand() * 0.7, color: colors[i % colors.length], size: 7 + this.rand() * 5,
+        });
       }
     }
 
@@ -243,7 +262,9 @@
         if (p.star > 0) this.drawStarAura(ctx, p);
         if (p.flower > 0) this.drawFlowerBadge(ctx, p, m.flowerPoints);
         ctx.restore();
+        if (p.coma > 0) this.drawComa(ctx, p);
       }
+      if (m.turkey) this.drawTurkey(ctx, pal, m.turkey);
       if (m.star) this.drawStar(ctx, m.star);
       this.drawBall(ctx, m.ball);
       this.drawNets(ctx, pal, "front", m);
@@ -643,6 +664,123 @@
         ctx.beginPath();
         ctx.ellipse(ex, 0, 1.6, 3.6, 0, 0, Math.PI * 2);
         ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // A strutting turkey: fanned tail feathers, flapping wings, bobbing head with a red wattle. It faces the way it's
+    // going, flaps hard when it hops or bolts, and blinks before it flies off.
+    drawTurkey(ctx, pal, tk) {
+      const left = M.TURKEY_LIFE - tk.age;
+      if (left < 3 && Math.floor(left * 6) % 2) return;
+      const t = this.t;
+      const speed = Math.hypot(tk.vx, tk.vy);
+      const panic = tk.flap > 0 || speed > M.TURKEY_SPEED + 40;
+      const flap = Math.sin(t * (panic ? 34 : 9)) * (panic ? 0.9 : 0.25);
+      const dir = tk.vx < -5 ? -1 : 1;
+      const R = M.TURKEY_R;
+      const hopY = tk.flap > 0 ? -Math.sin((tk.flap / 0.35) * Math.PI) * 14 : 0;
+      const step = speed > 20 ? Math.sin(t * 22) : 0;
+      this.drawShadow(ctx, pal, tk.x, tk.y + R * 1.25, R * 1.2, 7, tk.flap > 0 ? 0.5 : 0.9);
+      ctx.save();
+      ctx.translate(tk.x, tk.y + hopY);
+      ctx.scale(dir * 1.3, 1.3); // drawn a size up so it reads across the room
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "#451a03";
+      // Legs.
+      ctx.strokeStyle = "#d97706";
+      ctx.lineWidth = 3;
+      for (const [lx, ph] of [[-4, 1], [5, -1]]) {
+        ctx.beginPath();
+        ctx.moveTo(lx, R * 0.45);
+        ctx.lineTo(lx + step * 4 * ph, R * 0.95);
+        ctx.stroke();
+      }
+      // Tail fan behind the body.
+      const fan = [["#78350f", 1.35], ["#b45309", 1.15], ["#c2410c", 0.95], ["#fef3c7", 0.72]];
+      for (const [color, len] of fan) {
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        for (let i = 0; i < 7; i++) {
+          const a = -Math.PI / 2 - 1.15 + (i * 2.3) / 6 + Math.sin(t * 3 + i) * 0.03;
+          ctx.moveTo(-R * 0.35, -R * 0.1);
+          ctx.ellipse(-R * 0.35 + Math.cos(a) * R * len * 0.55, -R * 0.1 + Math.sin(a) * R * len * 0.55, R * 0.22, R * len * 0.5, a + Math.PI / 2, 0, Math.PI * 2);
+        }
+        ctx.fill();
+      }
+      // Body.
+      const body = ctx.createRadialGradient(-3, -4, 2, 0, 0, R * 0.8);
+      body.addColorStop(0, "#a16207");
+      body.addColorStop(1, "#713f12");
+      ctx.fillStyle = body;
+      ctx.beginPath();
+      ctx.ellipse(0, R * 0.12, R * 0.62, R * 0.52, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#451a03";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      // Wings, flapping.
+      for (const side of [-1, 1]) {
+        ctx.save();
+        ctx.translate(side * R * 0.28, R * 0.02);
+        ctx.rotate(side * (0.35 + flap));
+        ctx.fillStyle = side > 0 ? "#92400e" : "#78350f";
+        ctx.beginPath();
+        ctx.ellipse(side * R * 0.32, 0, R * 0.42, R * 0.2, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+      // Head and neck, pecking/bobbing.
+      const bob = tk.pause > 0 ? Math.max(0, Math.sin(t * 14)) * 8 : Math.sin(t * 11) * 2;
+      const hx = R * 0.52;
+      const hy = -R * 0.38 + bob;
+      ctx.strokeStyle = "#78350f";
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.moveTo(R * 0.3, -R * 0.05);
+      ctx.lineTo(hx, hy);
+      ctx.stroke();
+      ctx.fillStyle = "#e7c9a9";
+      ctx.beginPath();
+      ctx.arc(hx, hy, R * 0.22, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#f59e0b"; // beak
+      ctx.beginPath();
+      ctx.moveTo(hx + R * 0.18, hy - 2);
+      ctx.lineTo(hx + R * 0.38, hy + 1);
+      ctx.lineTo(hx + R * 0.18, hy + 4);
+      ctx.fill();
+      ctx.fillStyle = "#dc2626"; // wattle
+      ctx.beginPath();
+      ctx.ellipse(hx + R * 0.16, hy + R * 0.2, 2.6, 5.5 + Math.sin(t * 9) * 1, 0.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#111827";
+      ctx.beginPath();
+      ctx.arc(hx + 2, hy - 2, panic ? 2.6 : 1.8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Food coma: drowsy Zzz drifting up from a stuffed player.
+    drawComa(ctx, p) {
+      const s = p.scale || 1;
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = "#c7d2fe";
+      ctx.strokeStyle = "#312e81";
+      ctx.lineWidth = 4;
+      ctx.lineJoin = "round";
+      // Each z grows as it drifts up and to the side, then fades; three in flight at a time.
+      for (let i = 0; i < 3; i++) {
+        const k = (this.t * 0.6 + i / 3) % 1;
+        ctx.globalAlpha = (p.connected ? 1 : 0.4) * Math.min(1, Math.sin(k * Math.PI) * 1.6);
+        ctx.font = `900 ${Math.round((14 + k * 16) * s)}px Inter, system-ui, -apple-system, sans-serif`;
+        const x = p.x + (HALF * 0.4 + k * 30) * s;
+        const y = p.y - (HALF + 14 + k * 46) * s;
+        ctx.strokeText("Z", x, y);
+        ctx.fillText("Z", x, y);
       }
       ctx.restore();
     }

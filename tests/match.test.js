@@ -680,3 +680,97 @@ test("flower goals are worth what the host picks (2 by default)", () => {
   M.setFlowerPoints(m, 7);
   assert.equal(m.flowerPoints, M.FLOWER_POINTS, "only the offered values");
 });
+
+// ---------- Mayhem: power switches, the turkey and the food coma ----------
+
+function turkeyMatch() {
+  const m = M.createMatch();
+  m.rand = seeded(21);
+  const ann = M.addPlayer(m, "aaaaaa", "Ann", "left");
+  const bob = M.addPlayer(m, "bbbbbb", "Bob", "right");
+  const cy = M.addPlayer(m, "cccccc", "Cy", "right");
+  M.setMayhem(m, true);
+  return { m, ann, bob, cy };
+}
+
+test("every Mayhem power starts on, and a switched-off power never appears", () => {
+  const m = M.createMatch();
+  assert.deepEqual(m.powers, { star: true, shroom: true, flower: true, turkey: true });
+  m.rand = seeded(8);
+  M.addPlayer(m, "aaaaaa", "Ann");
+  M.setMayhem(m, true);
+  for (const kind of M.POWERS) M.setPower(m, kind, false);
+  run(m, 200);
+  assert.ok(!m.star && !m.shroom && !m.flower && !m.turkey);
+  assert.ok(!M.drainEvents(m).some((e) => /-spawn$/.test(e.type)));
+  M.setPower(m, "turkey", true);
+  run(m, M.TURKEY_GAP_MAX + 1);
+  assert.ok(m.turkey || M.drainEvents(m).some((e) => e.type === "turkey-spawn"), "the turkey comes back once switched on");
+});
+
+test("switching a power off clears it from the pitch", () => {
+  const { m } = turkeyMatch();
+  m.turkey = { x: M.CX, y: M.CY - 300, vx: 0, vy: 0, heading: 0, pause: 0, age: 0, hop: 0, flap: 0 };
+  M.setPower(m, "turkey", false);
+  assert.equal(m.turkey, null);
+  assert.ok(M.drainEvents(m).some((e) => e.type === "turkey-gone"));
+});
+
+test("the turkey runs from players and stays on the pitch", () => {
+  const { m, ann } = turkeyMatch();
+  Object.assign(ann, { x: M.CX - 200, y: M.CY + 250 });
+  m.turkey = { x: M.CX - 80, y: M.CY + 250, vx: 0, vy: 0, heading: 0, pause: 0, age: 0, hop: 9, flap: 0 };
+  const start = Math.hypot(m.turkey.x - ann.x, m.turkey.y - ann.y);
+  run(m, 0.6);
+  assert.ok(Math.hypot(m.turkey.x - ann.x, m.turkey.y - ann.y) > start + 80, "it bolted");
+  for (let i = 0; i < 600 && m.turkey; i++) {
+    M.step(m, 1 / 60);
+    const t = m.turkey;
+    if (t) assert.ok(t.x > M.PITCH.L && t.x < M.PITCH.R && t.y > M.PITCH.T && t.y < M.PITCH.B);
+  }
+});
+
+test("cornered, the turkey flutter-hops away", () => {
+  const { m, ann } = turkeyMatch();
+  m.turkey = { x: M.CX, y: M.CY - 250, vx: 0, vy: 0, heading: 0, pause: 0, age: 0, hop: 0, flap: 0 };
+  Object.assign(ann, { x: M.CX - 100, y: M.CY - 250 });
+  M.step(m, 1 / 60);
+  assert.ok(M.drainEvents(m).some((e) => e.type === "turkey-hop"));
+  assert.ok(Math.hypot(m.turkey.vx, m.turkey.vy) > M.TURKEY_FLEE);
+});
+
+test("catching the turkey puts the other team in a food coma: slow, and no kicking", () => {
+  const { m, ann, bob, cy } = turkeyMatch();
+  m.turkey = { x: ann.x, y: ann.y, vx: 0, vy: 0, heading: 0, pause: 0, age: 0, hop: 9, flap: 0 };
+  M.step(m, 1 / 120);
+  const got = M.drainEvents(m).find((e) => e.type === "turkey-get");
+  assert.equal(got.id, "aaaaaa");
+  assert.deepEqual(got.victims.sort(), ["bbbbbb", "cccccc"]);
+  assert.equal(m.turkey, null);
+  assert.equal(ann.coma, 0, "the catcher's team is fine");
+  assert.ok(bob.coma > 0 && cy.coma > 0);
+  assert.equal(M.kick(m, bob), false, "too stuffed to kick");
+  M.setInput(m, bob.id, { x: 1, y: 0 });
+  M.setInput(m, ann.id, { x: -1, y: 0 });
+  Object.assign(bob, { y: M.CY + 300, vx: 0 });
+  Object.assign(ann, { y: M.CY - 300, vx: 0 });
+  run(m, 2);
+  assert.ok(bob.vx < 330 * M.COMA_SLOW + 1 && Math.abs(ann.vx) > 300, `bob crawls (${bob.vx}), ann runs (${ann.vx})`);
+  run(m, M.COMA_POWER);
+  assert.equal(bob.coma, 0);
+  assert.ok(M.drainEvents(m).filter((e) => e.type === "coma-end").length === 2);
+  assert.equal(M.kick(m, bob), true);
+});
+
+test("the turkey flaps off if nobody catches it, and a new game ends any food coma", () => {
+  const { m, bob } = turkeyMatch();
+  M.setPower(m, "star", false);
+  m.turkey = { x: M.CX, y: M.PITCH.T + 60, vx: 0, vy: 0, heading: 0, pause: 0, age: M.TURKEY_LIFE - 0.05, hop: 0, flap: 0 };
+  run(m, 0.2);
+  assert.equal(m.turkey, null);
+  assert.ok(M.drainEvents(m).some((e) => e.type === "turkey-gone"));
+  bob.coma = 5;
+  M.resetMatch(m);
+  assert.equal(bob.coma, 0);
+  assert.ok(M.drainEvents(m).some((e) => e.type === "coma-end" && e.id === "bbbbbb"));
+});
