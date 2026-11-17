@@ -2,7 +2,7 @@
 (function (root) {
   "use strict";
 
-  const APP_VERSION = "2026.11.17.6";
+  const APP_VERSION = "2026.11.17.7";
   const DEFAULT_RELAY = "wss://uncinus-relay.nimbus-sync.workers.dev";
   const RELAY_KEY = "uncinus_relay";
   const THEME_KEY = "uncinus_theme";
@@ -16,6 +16,8 @@
     "FUQ", "FVCK", "FUX", "GAY", "HELL", "HUMP", "JEW", "JERK", "KKK", "KUNT", "KYS", "NUDE", "PEE", "PERV", "PMS", "PUKE",
     "PUSY", "PUTA", "PUTZ", "RAPE", "RAPY", "SEX", "SHAG", "SHT", "SLUT", "SMUT", "STFU", "SUCK", "SUX", "TURD", "TWAT",
     "VAG", "WANK", "WTF", "XXX", "CVNT", "SLVT", "DMN", "FKN", "FML", "NSFW", "PRN", "PRNS", "THC", "METH",
+    "PUSS", "PVSS", "CUCK", "KUM", "SHAT", "SKANK", "SKNK", "TWT", "TARD", "SPAZ", "SPAS", "JAP", "GYP", "NGGR", "NGGA",
+    "NGR", "NGA", "FUGLY", "SLAG",
   ];
 
   function isRelayUrl(value) {

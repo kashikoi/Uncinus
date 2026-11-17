@@ -20,7 +20,7 @@ test("room codes avoid I and O and validate", () => {
 });
 
 test("room codes never spell a rude word", () => {
-  for (const bad of ["FUCK", "CUNT", "SLUT", "ASSE", "WANK", "RAPE", "QSEX"]) assert.ok(!util.isCleanRoomCode(bad), bad);
+  for (const bad of ["FUCK", "CUNT", "PUSS", "SLUT", "ASSE", "WANK", "FAGS", "CUMM", "RAPE", "QSEX", "NGGR"]) assert.ok(!util.isCleanRoomCode(bad), bad);
   for (const ok of ["KXRM", "BBWQ", "PCGG"]) assert.ok(util.isCleanRoomCode(ok), ok);
   // When the dice land on a rude one, it rolls again.
   const rolls = [[5, 18, 2, 9], [9, 21, 15, 11]]; // FUCK, then KXRM
