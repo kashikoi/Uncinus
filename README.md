@@ -41,7 +41,7 @@ Settings → **New game** restarts.
 **Mayhem mode** (Settings → Rules): about once a minute a star drifts onto the pitch. Whoever grabs it is invincible
 for 10 seconds — they ghost straight through other players and nobody else can touch the ball, so they can dribble
 the length of the pitch uncontested. Now and then a mushroom sprouts too: eat it to grow 2.5× bigger (and heavier)
-for 12 seconds and shove everyone around. Grab a power flower and, for 20 seconds, every goal you score counts 5.
+for 12 seconds and shove everyone around. Grab a power flower and, for 20 seconds, every goal you score counts double (Settings → Flower: ×2, ×3 or ×5).
 
 Which way? Each goal (net, frame and end line) is painted in the colour of the team **defending** it, and big chevrons in each half point the way that team attacks. Each
 phone also shows a mini pitch: your goal says *Defend*, the other one pulses *Score*.

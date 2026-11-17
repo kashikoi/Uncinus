@@ -272,7 +272,7 @@
 
   function setFlower(on, points) {
     document.body.classList.toggle("is-flower", on);
-    const n = Number.isInteger(points) ? points : 5;
+    const n = Number.isInteger(points) ? points : 2;
     if (on) powerFlash("is-flower", "🌸 FLOWER POWER!", `Your goals count ${n}× — go score!`, [60, 30, 60, 30, 60, 30, 200]);
   }
 

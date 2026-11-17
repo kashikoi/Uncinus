@@ -241,7 +241,7 @@
         if (p.flower > 0) this.drawFlowerAura(ctx, p);
         this.drawPlayer(ctx, p);
         if (p.star > 0) this.drawStarAura(ctx, p);
-        if (p.flower > 0) this.drawFlowerBadge(ctx, p);
+        if (p.flower > 0) this.drawFlowerBadge(ctx, p, m.flowerPoints);
         ctx.restore();
       }
       if (m.star) this.drawStar(ctx, m.star);
@@ -665,8 +665,8 @@
       ctx.restore();
     }
 
-    // "5×" badge on the top-right corner of a player with flower power.
-    drawFlowerBadge(ctx, p) {
+    // "2×" (or whatever flower goals are worth) badge on the top-right corner of a player with flower power.
+    drawFlowerBadge(ctx, p, points) {
       if (p.flower < 2 && Math.floor(p.flower * 8) % 2) return;
       const bx = p.x + FRAME.half;
       const by = p.y - FRAME.top;
@@ -682,7 +682,7 @@
       ctx.font = "900 13px Inter, system-ui, -apple-system, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
-      ctx.fillText(`${M.FLOWER_POINTS}×`, bx, by + 1);
+      ctx.fillText(`${points}×`, bx, by + 1);
       ctx.restore();
     }
 

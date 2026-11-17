@@ -44,7 +44,7 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
   `BIG_SCALE`. Player size is per-player (`half(p)`, mass = scale²) in walls/ball/push — never use bare `HALF` for a
   player. Renderer draws players scaled about their centre. Events `shroom-spawn/get/gone/end`; host→player `big{on}`.
   Mushroom and flower share `ITEMS` + `stepItem` (stationary pick-up, own gap timer, one holder per kind). Flower
-  gives `p.flower = FLOWER_POWER`; goals by the holder (not own goals) add `FLOWER_POINTS`; `goal` events carry `points`.
+  gives `p.flower = FLOWER_POWER`; goals by the holder (not own goals) add `m.flowerPoints` (Settings picker of `FLOWER_CHOICES` 2/3/5, default `FLOWER_POINTS` 2, saved in `uncinus_flower_points`, `M.setFlowerPoints`); `goal` events carry `points`.
 - Team sides must stay obvious (players got confused): goals/end lines use the defending team's colour, chevrons
   point the attack direction; phones show the `attack-bar` (Defend / Score). Teams have no displayed names — colour
   only (`team-chip`); `TEAMS[].name` ("Blue"/"Orange") is just for aria labels and the `you.teamName` field.

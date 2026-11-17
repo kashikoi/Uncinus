@@ -40,11 +40,13 @@
   const BIG_SCALE = 2.5;
   const SHROOM_GAP_MIN = 35;
   const SHROOM_GAP_MAX = 75;
-  // ...and a power flower blooms now and then; while it lasts, goals its holder scores count FLOWER_POINTS.
+  // ...and a power flower blooms now and then; while it lasts, goals its holder scores count `m.flowerPoints`
+  // (the host's choice of FLOWER_CHOICES; FLOWER_POINTS by default).
   const FLOWER_R = 20;
   const FLOWER_LIFE = 15;
   const FLOWER_POWER = 20; // seconds of flower power
-  const FLOWER_POINTS = 5;
+  const FLOWER_POINTS = 2;
+  const FLOWER_CHOICES = [2, 3, 5];
   const FLOWER_GAP_MIN = 45;
   const FLOWER_GAP_MAX = 90;
 
@@ -111,6 +113,7 @@
       flower: null,
       flowerIn: 0,
       rand: Math.random,
+      flowerPoints: FLOWER_POINTS,
       turn: 0, // rotates which player's ball contact resolves first
       // Championship matches: the host kicks off ("pre" waits) and moves on after full time ("full" holds).
       manual: false,
@@ -491,7 +494,7 @@
     if (!team) return;
     const scorer = b.lastTouch ? m.players.get(b.lastTouch) : null;
     const ownGoal = Boolean(scorer && scorer.team !== team);
-    const points = scorer && !ownGoal && scorer.flower > 0 ? FLOWER_POINTS : 1;
+    const points = scorer && !ownGoal && scorer.flower > 0 ? m.flowerPoints : 1;
     m.score[team] += points;
     m.events.push({
       type: "goal",
@@ -526,6 +529,10 @@
         p[item.field] = 0;
       }
     }
+  }
+
+  function setFlowerPoints(m, points) {
+    m.flowerPoints = FLOWER_CHOICES.includes(points) ? points : FLOWER_POINTS;
   }
 
   function setMayhem(m, on) {
@@ -737,6 +744,7 @@
     FLOWER_LIFE,
     FLOWER_POWER,
     FLOWER_POINTS,
+    FLOWER_CHOICES,
     FLOWER_GAP_MIN,
     FLOWER_GAP_MAX,
     DISCONNECT_GRACE,
@@ -754,6 +762,7 @@
     clearPlayers,
     setTeam,
     setMayhem,
+    setFlowerPoints,
     disconnectPlayer,
     sanitizeInput,
     setInput,

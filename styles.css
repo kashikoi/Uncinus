@@ -2239,6 +2239,15 @@ body[data-cup="champion"] .roster {
   margin-top: 8px;
 }
 
+.flower-row {
+  grid-template-columns: 86px 1fr;
+  margin: 4px 0 0 54px;
+}
+
+.flower-row > span {
+  white-space: nowrap;
+}
+
 .modal__section .bot-count {
   margin: 10px 0 0;
 }

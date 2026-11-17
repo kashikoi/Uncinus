@@ -10,6 +10,7 @@
   const BOT_SIZES = [0, 1, 2, 3, 4, 5];
   const TEAM_PICK_KEY = "uncinus_team_pick";
   const MAYHEM_KEY = "uncinus_mayhem";
+  const FLOWER_KEY = "uncinus_flower_points"; // what a goal is worth with flower power
   const LENGTH_KEY = "uncinus_length";
   const CUP_ON_KEY = "uncinus_cup_on";
   const CUP_KEY = "uncinus_cup"; // the championship in progress, so a reload of the big screen picks it back up
@@ -268,8 +269,8 @@
       } else if (ev.type === "flower-spawn") {
         showStarToast("🌸 A power flower bloomed — grab it!");
       } else if (ev.type === "flower-get") {
-        showStarToast(`🌸 ${ev.name} has flower power — goals count ${M.FLOWER_POINTS}×!`);
-        sendTo(ev.id, { t: "flower", on: true, secs: M.FLOWER_POWER, points: M.FLOWER_POINTS });
+        showStarToast(`🌸 ${ev.name} has flower power — goals count ${state.match.flowerPoints}×!`);
+        sendTo(ev.id, { t: "flower", on: true, secs: M.FLOWER_POWER, points: state.match.flowerPoints });
       } else if (ev.type === "flower-end") {
         sendTo(ev.id, { t: "flower", on: false });
       }
@@ -459,6 +460,17 @@
     };
     state.teamPick = get(TEAM_PICK_KEY);
     M.setMayhem(state.match, get(MAYHEM_KEY));
+    M.setFlowerPoints(state.match, Number(stored(FLOWER_KEY)) || M.FLOWER_POINTS);
+  }
+
+  function setFlowerPoints(points) {
+    M.setFlowerPoints(state.match, points);
+    store(FLOWER_KEY, String(state.match.flowerPoints));
+    updateFlowerPicker();
+  }
+
+  function updateFlowerPicker() {
+    el.flowerPicker.querySelectorAll(".theme-chip").forEach((c) => c.classList.toggle("is-active", Number(c.dataset.points) === state.match.flowerPoints));
   }
 
   function showGoalBanner(team, who, word) {
@@ -1126,6 +1138,7 @@
     updateBotPickers();
     el.teamPickToggle.checked = state.teamPick;
     el.mayhemToggle.checked = state.match.mayhem;
+    updateFlowerPicker();
     // In a championship, "New game" replays the tie being played (from its warm-up).
     el.resetBtn.textContent = state.cup ? "Replay this match" : "New game";
     el.resetBtn.disabled = Boolean(state.cup) && state.cup.phase !== "match";
@@ -1230,7 +1243,7 @@
       "pitch", "status", "statusText", "kbBtn", "fsBtn", "settingsBtn", "joinCard", "joinMini", "joinClose", "qr", "miniQr",
       "roomCode", "miniRoom", "joinUrl", "joinLink", "emptyHint", "banner", "bannerText", "bannerBtn", "settings",
       "soundBtn", "soundOn", "soundOff", "themePicker", "relayInput", "relaySave", "relayReset", "relayError", "newRoomBtn", "resetBtn", "version", "appVersion", "settingsClose",
-      "scoreLeft", "scoreRight", "goalBanner", "goalWho", "teamPickToggle", "mayhemToggle", "starToast", "goalWord", "matchClock", "periodBanner",
+      "scoreLeft", "scoreRight", "goalBanner", "goalWho", "teamPickToggle", "mayhemToggle", "flowerPicker", "starToast", "goalWord", "matchClock", "periodBanner",
       "periodWord", "periodSub", "periodCount", "lengthPicker",
       "cupToggle", "cupSettings", "cupLocked", "cupSizePicker", "cupLengthPicker", "cupThemePicker", "cupMergeToggle", "cupRestartBtn",
       "cupNameLeft", "cupNameRight", "cupLobby", "cupQr", "cupRoom", "cupUrl", "cupTeams", "cupWaiting", "cupVip", "cupStart",
@@ -1270,6 +1283,10 @@
     });
     el.teamPickToggle.addEventListener("change", () => setRule(TEAM_PICK_KEY, el.teamPickToggle.checked));
     el.mayhemToggle.addEventListener("change", () => setRule(MAYHEM_KEY, el.mayhemToggle.checked));
+    el.flowerPicker.addEventListener("click", (ev) => {
+      const chip = ev.target.closest("[data-points]");
+      if (chip) setFlowerPoints(Number(chip.dataset.points));
+    });
     el.relaySave.addEventListener("click", saveRelay);
     el.relayReset.addEventListener("click", () => {
       el.relayInput.value = util.DEFAULT_RELAY;

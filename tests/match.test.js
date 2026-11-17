@@ -669,3 +669,14 @@ test("ball scrums don't favour whoever joined last", () => {
   }
   assert.ok(leftWins >= 8 && rightWins >= 8, `both sides win some scrums (left ${leftWins}, right ${rightWins})`);
 });
+
+test("flower goals are worth what the host picks (2 by default)", () => {
+  assert.equal(M.createMatch().flowerPoints, 2);
+  const { m } = flowerMatch();
+  M.setFlowerPoints(m, 3);
+  shootRight(m, "aaaaaa");
+  run(m, 0.3);
+  assert.deepEqual(m.score, { left: 3, right: 0 });
+  M.setFlowerPoints(m, 7);
+  assert.equal(m.flowerPoints, M.FLOWER_POINTS, "only the offered values");
+});
