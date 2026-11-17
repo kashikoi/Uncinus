@@ -2235,6 +2235,14 @@ body[data-cup="champion"] .roster {
   margin: 0;
 }
 
+.bot-skill {
+  margin-top: 8px;
+}
+
+.modal__section .bot-count {
+  margin: 10px 0 0;
+}
+
 /* ==========================================================================
    Championship — phone
    ========================================================================== */

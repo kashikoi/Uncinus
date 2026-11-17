@@ -3,9 +3,11 @@
   "use strict";
 
   const U = window.Uncinus;
-  const { util, match: M, face: F, sound: S, cup: C } = U;
+  const { util, match: M, face: F, sound: S, cup: C, bots: AI } = U;
   const ROOM_KEY = "uncinus_room";
   const KEYBOARD_ID = "keyboard";
+  const BOTS_KEY = "uncinus_bots"; // { size: players per team that bots top up to (0 = off), skill }
+  const BOT_SIZES = [0, 1, 2, 3, 4, 5];
   const TEAM_PICK_KEY = "uncinus_team_pick";
   const MAYHEM_KEY = "uncinus_mayhem";
   const LENGTH_KEY = "uncinus_length";
@@ -48,6 +50,10 @@
     cupPhaseAt: 0,
     cupShown: "",
     cheers: new Map(),
+    bots: new Map(), // bot id → brain (js/bots.js)
+    botNames: new Map(), // bot id → name, so new bots get one nobody's using
+    botSettings: { size: 0, skill: "normal" },
+    botCheck: 0,
     slowFrames: 0,
     avgFrame: 1 / 60,
     dprTrial: null,
@@ -75,6 +81,9 @@
 
   // Phones the host knows about: on the pitch, or (in championship mode) waiting their turn.
   const knows = (id) => state.match.players.has(id) || Boolean(state.cup && state.cup.members.has(id));
+  // Players without a phone: the keyboard player and bots. They get no messages and never "disconnect".
+  const isBot = (id) => state.bots.has(id);
+  const isLocal = (id) => id === KEYBOARD_ID || isBot(id);
 
   function joinUrl() {
     const url = new URL("play.html", location.href);
@@ -95,9 +104,9 @@
     state.room = util.isRoomCode(code) ? code : util.roomCode();
     sessionStorage.setItem(ROOM_KEY, state.room);
     if (state.cup) store(CUP_ROOM_KEY, state.room);
-    for (const p of [...state.match.players.values()]) if (p.id !== KEYBOARD_ID) state.match.players.delete(p.id);
+    for (const p of [...state.match.players.values()]) if (!isLocal(p.id)) state.match.players.delete(p.id);
     // Championship teams are kept; everyone rejoins through the new code.
-    if (state.cup) for (const p of state.cup.members.values()) p.connected = false;
+    if (state.cup) for (const p of state.cup.members.values()) if (!p.bot) p.connected = false;
     state.faces.clear();
     if (state.link) state.link.close();
     state.link = new U.Link({
@@ -112,7 +121,7 @@
   }
 
   function sendTo(id, d) {
-    if (id === KEYBOARD_ID || !state.link) return;
+    if (isLocal(id) || !state.link) return;
     state.link.send({ to: id, d });
   }
 
@@ -127,14 +136,22 @@
     }
     // A phone that last saw a championship goes back to the normal pad.
     sendTo(id, { t: "cup", on: false });
-    const p = M.addPlayer(state.match, id, name);
+    let p = M.addPlayer(state.match, id, name);
+    // People come first: on a full pitch, a bot steps off to make room.
+    if (!p && !isBot(id)) {
+      const bot = [...state.match.players.values()].reverse().find((q) => isBot(q.id));
+      if (bot) {
+        dropBot(bot.id);
+        p = M.addPlayer(state.match, id, name);
+      }
+    }
     if (!p) {
       sendTo(id, { t: "full" });
       return;
     }
     sendYou(p);
     sendTo(id, { t: "score", ...state.match.score });
-    if (id !== KEYBOARD_ID && state.joinOpen && realPlayers().length === 1) setJoinOpen(false);
+    if (!isLocal(id) && state.joinOpen && realPlayers().length === 1) setJoinOpen(false);
   }
 
   function sendYou(p) {
@@ -166,8 +183,8 @@
   function handleMessage(msg) {
     switch (msg.t) {
       case "welcome":
-        for (const p of state.match.players.values()) if (p.id !== KEYBOARD_ID) M.disconnectPlayer(state.match, p.id);
-        if (state.cup) for (const p of state.cup.members.values()) p.connected = false;
+        for (const p of state.match.players.values()) if (!isLocal(p.id)) M.disconnectPlayer(state.match, p.id);
+        if (state.cup) for (const p of state.cup.members.values()) if (!p.bot) p.connected = false;
         for (const p of msg.players || []) greet(p.id, p.name);
         if (state.cup) scheduleCupSync();
         break;
@@ -508,6 +525,7 @@
   }
 
   // `fresh`: turned on from Settings, so a finished championship goes back to its lobby for another one.
+  // Bots belong to a mode: normal-play bots step off, and a saved championship brings its own bots back.
   function setCupMode(on, fresh = true) {
     store(CUP_ON_KEY, on ? "1" : "0");
     if (Boolean(state.cup) === on) return;
@@ -515,7 +533,13 @@
     if (on) {
       const here = realPlayers().filter((p) => p.connected).map((p) => ({ id: p.id, name: p.name }));
       if (state.keyboard) toggleKeyboard();
+      for (const id of [...state.bots.keys()]) dropBot(id);
       const cup = C.load(savedCup()) || C.createCup(state.cupSettings);
+      for (const p of cup.members.values()) {
+        if (!p.bot) continue;
+        adoptBot(p.id, p.name);
+        p.connected = true;
+      }
       for (const p of here) C.join(cup, p.id, p.name);
       if (fresh && cup.phase === "champion") C.restart(cup);
       C.configure(cup, state.cupSettings);
@@ -525,18 +549,22 @@
       Object.assign(m, { manual: true, maxPlayers: CUP_MAX_PLAYERS });
       setJoinOpen(false);
       onCupPhase();
+      fillBots();
     } else {
       saveCup();
-      const here = [...state.cup.members.values()].filter((p) => p.connected);
+      const here = [...state.cup.members.values()].filter((p) => p.connected && !p.bot);
       clearTimeout(state.cupSyncTimer);
       state.cupSyncTimer = null;
       state.cup = null;
+      state.bots.clear();
+      state.botNames.clear();
       M.clearPlayers(m);
       Object.assign(m, { manual: false, maxPlayers: M.MAX_PLAYERS });
       M.setGameLength(m, savedLength());
       el.periodBanner.hidden = true;
       el.goalBanner.hidden = true;
       for (const p of here) greet(p.id, p.name);
+      fillBots();
       renderCup();
       renderRoster();
       renderScore();
@@ -544,6 +572,7 @@
     }
     updateCupPickers();
     updateLengthPicker();
+    updateBotPickers();
   }
 
   // Set up the pitch, overlays, sounds and phones for the phase the championship just entered.
@@ -653,6 +682,7 @@
     C.restart(state.cup);
     C.configure(state.cup, state.cupSettings);
     cupEvents();
+    fillBots();
   }
 
   // Spectators' cheers float up the big screen.
@@ -869,6 +899,112 @@
     el.cupChampBracket.innerHTML = bracketHtml(cup);
   }
 
+  // ---------- Bots ----------
+  // Computer players keep every team topped up to `botSettings.size`, so anyone can play — even on their own.
+  // People always come first: when someone joins a team, one of its bots steps off. In a championship the topping-up
+  // happens in the lobby; once it starts, bots stay with their teams.
+  function loadBotSettings() {
+    try {
+      const s = JSON.parse(stored(BOTS_KEY) || "{}") || {};
+      if (BOT_SIZES.includes(s.size)) state.botSettings.size = s.size;
+      if (AI.SKILLS[s.skill]) state.botSettings.skill = s.skill;
+    } catch {
+      // Defaults: no bots, normal skill.
+    }
+  }
+
+  function setBotSetting(key, value) {
+    state.botSettings[key] = value;
+    store(BOTS_KEY, JSON.stringify(state.botSettings));
+    if (key === "skill") for (const brain of state.bots.values()) brain.skill = value;
+    fillBots();
+    updateBotPickers();
+  }
+
+  function updateBotPickers() {
+    const s = state.botSettings;
+    el.botSizePicker.querySelectorAll(".theme-chip").forEach((c) => c.classList.toggle("is-active", Number(c.dataset.bots) === s.size));
+    el.botSkillPicker.querySelectorAll(".theme-chip").forEach((c) => c.classList.toggle("is-active", c.dataset.skill === s.skill));
+    const n = state.bots.size;
+    const lobbyOnly = state.cup && state.cup.phase !== "lobby";
+    el.botCount.textContent = `${n ? `🤖 ${n} bot${n === 1 ? "" : "s"} playing.` : "No bots right now."}${lobbyOnly ? " Changes to team size apply in the next championship's lobby." : ""}`;
+  }
+
+  // Take charge of a bot (new, or one a saved championship brought back).
+  function adoptBot(id, name) {
+    state.bots.set(id, AI.createBrain({ skill: state.botSettings.skill }));
+    state.botNames.set(id, String(name).replace(/^🤖\s*/, ""));
+  }
+
+  function makeBot() {
+    const id = `bot-${util.randomId(8)}`;
+    const name = `🤖 ${AI.pickName(state.botNames.values())}`;
+    adoptBot(id, name);
+    return { id, name };
+  }
+
+  function dropBot(id) {
+    state.bots.delete(id);
+    state.botNames.delete(id);
+    M.removePlayer(state.match, id);
+    if (state.cup) C.remove(state.cup, id);
+  }
+
+  function fillBots() {
+    const size = state.botSettings.size;
+    let changed = false;
+    if (state.cup) {
+      const cup = state.cup;
+      if (cup.phase !== "lobby") return;
+      for (const p of [...cup.members.values()]) {
+        if (p.bot && p.team === null) {
+          dropBot(p.id);
+          changed = true;
+        }
+      }
+      for (const t of cup.teams) {
+        const here = [...cup.members.values()].filter((p) => p.connected && p.team === t.id);
+        const bots = here.filter((p) => p.bot).sort((a, b) => a.seq - b.seq);
+        const want = Math.max(0, size - (here.length - bots.length));
+        while (bots.length > want) {
+          dropBot(bots.pop().id);
+          changed = true;
+        }
+        while (bots.length < want) {
+          const b = makeBot();
+          C.join(cup, b.id, b.name, { bot: true });
+          C.pick(cup, b.id, t.id);
+          bots.push(cup.members.get(b.id));
+          changed = true;
+        }
+      }
+      if (changed) scheduleCupSync();
+    } else {
+      const m = state.match;
+      for (const side of ["left", "right"]) {
+        const list = [...m.players.values()].filter((p) => p.team === side);
+        const bots = list.filter((p) => isBot(p.id)).sort((a, b) => a.joinedAt - b.joinedAt);
+        const want = Math.max(0, size - (list.length - bots.length));
+        while (bots.length > want) {
+          dropBot(bots.pop().id);
+          changed = true;
+        }
+        while (bots.length < want && m.players.size < m.maxPlayers) {
+          const b = makeBot();
+          const p = M.addPlayer(m, b.id, b.name, side);
+          if (!p) {
+            dropBot(b.id);
+            break;
+          }
+          bots.push(p);
+          changed = true;
+        }
+      }
+      if (changed) renderRoster();
+    }
+    if (changed) updateBotPickers();
+  }
+
   // ---------- Keyboard player (try it without a phone) ----------
   function toggleKeyboard() {
     if (!state.keyboard && state.cup) {
@@ -896,7 +1032,7 @@
 
   // ---------- UI ----------
   function realPlayers() {
-    return [...state.match.players.values()].filter((p) => p.id !== KEYBOARD_ID);
+    return [...state.match.players.values()].filter((p) => !isLocal(p.id));
   }
 
   function renderJoinCard() {
@@ -987,6 +1123,7 @@
     updateThemePicker();
     updateLengthPicker();
     updateCupPickers();
+    updateBotPickers();
     el.teamPickToggle.checked = state.teamPick;
     el.mayhemToggle.checked = state.match.mayhem;
     // In a championship, "New game" replays the tie being played (from its warm-up).
@@ -1061,6 +1198,13 @@
     last = now;
     watchFrameRate(dt);
     if (state.keyboard) keyboardInput();
+    // Bots: top teams up now and then (people come and go), and steer them every frame.
+    state.botCheck -= dt;
+    if (state.botCheck <= 0) {
+      state.botCheck = 0.5;
+      fillBots();
+    }
+    if (state.bots.size) AI.drive(state.match, state.bots, dt);
     const before = state.match.players.size;
     // Fixed physics steps keep collisions consistent regardless of frame rate.
     let remaining = dt;
@@ -1092,6 +1236,7 @@
       "cupNameLeft", "cupNameRight", "cupLobby", "cupQr", "cupRoom", "cupUrl", "cupTeams", "cupWaiting", "cupVip", "cupStart",
       "cupBoard", "cupBoardLabel", "cupBoardVs", "cupBoardMoves", "cupBoardCount", "cupBoardGo", "cupBracket",
       "cupChampion", "cupChampTeam", "cupChampNames", "cupChampBoot", "cupChampBracket", "cupAgain", "cupExit",
+      "botSizePicker", "botSkillPicker", "botCount",
     ].forEach((id) => (el[id] = $(id)));
     el.roster_left = $("rosterLeft");
     el.roster_right = $("rosterRight");
@@ -1148,6 +1293,14 @@
     });
 
     el.cupToggle.addEventListener("change", () => setCupMode(el.cupToggle.checked));
+    el.botSizePicker.addEventListener("click", (ev) => {
+      const chip = ev.target.closest("[data-bots]");
+      if (chip) setBotSetting("size", Number(chip.dataset.bots));
+    });
+    el.botSkillPicker.addEventListener("click", (ev) => {
+      const chip = ev.target.closest("[data-skill]");
+      if (chip) setBotSetting("skill", chip.dataset.skill);
+    });
     el.cupSizePicker.addEventListener("click", (ev) => {
       const chip = ev.target.closest("[data-size]");
       if (chip) setCupSetting("size", Number(chip.dataset.size));
@@ -1201,6 +1354,7 @@
     state.renderer.faces = state.faces;
     loadRules();
     loadCupSettings();
+    loadBotSettings();
     M.setGameLength(state.match, savedLength());
     state.renderer.setTheme(util.applyTheme());
     startRoom(new URLSearchParams(location.search).get("room") || sessionStorage.getItem(ROOM_KEY) || (stored(CUP_ON_KEY) === "1" ? stored(CUP_ROOM_KEY) : null));

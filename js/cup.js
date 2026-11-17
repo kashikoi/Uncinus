@@ -78,10 +78,12 @@
   }
 
   // ---------- People ----------
-  function join(cup, id, name) {
+  // `bot`: a computer player (the host drives it). Bots never become commissioner, and they're the first to move
+  // when teams are evened up.
+  function join(cup, id, name, { bot = false } = {}) {
     let p = cup.members.get(id);
     if (!p) {
-      p = { id, name: name || "Player", team: null, home: null, seq: ++cup.seq, pickSeq: 0, connected: true };
+      p = { id, name: name || "Player", team: null, home: null, seq: ++cup.seq, pickSeq: 0, connected: true, bot: Boolean(bot) };
       cup.members.set(id, p);
     } else {
       p.name = name || p.name;
@@ -94,6 +96,11 @@
     const p = cup.members.get(id);
     if (p) p.connected = false;
   }
+
+  function remove(cup, id) {
+    return cup.members.delete(id);
+  }
+
 
   // In the lobby anyone can pick (and switch) freely. Once the cup is under way, latecomers pick once, from the
   // teams still in it.
@@ -113,18 +120,18 @@
     return true;
   }
 
-  // The commissioner — whoever joined first and is still here — can start things from their phone.
+  // The commissioner — whoever joined first and is still here (people only) — can start things from their phone.
   function vip(cup) {
     let best = null;
-    for (const p of cup.members.values()) if (p.connected && (!best || p.seq < best.seq)) best = p;
+    for (const p of cup.members.values()) if (p.connected && !p.bot && (!best || p.seq < best.seq)) best = p;
     return best ? best.id : null;
   }
 
   const needed = (cup) => Math.max(0, cup.size - live(cup).length);
 
   // ---------- Starting: even teams + the draw ----------
-  // Every team ends up within one player of every other. Teams keep their earliest pickers; the latest pickers
-  // on crowded teams, and anyone who never picked, fill the gaps. Returns who moved.
+  // Every team ends up within one player of every other. Teams keep their earliest pickers (people before bots); the
+  // latest pickers on crowded teams, and anyone who never picked, fill the gaps. Returns who moved.
   function balance(cup) {
     const people = live(cup).sort((a, b) => a.seq - b.seq);
     const T = cup.size;
@@ -133,7 +140,7 @@
     const groups = Array.from({ length: T }, () => []);
     const pool = [];
     for (const p of people) (p.team !== null && p.team < T ? groups[p.team] : pool).push(p);
-    for (const g of groups) g.sort((a, b) => a.pickSeq - b.pickSeq);
+    for (const g of groups) g.sort((a, b) => Number(a.bot) - Number(b.bot) || a.pickSeq - b.pickSeq);
     const order = groups.map((_, t) => t).sort((a, b) => groups[b].length - groups[a].length || a - b);
     const cap = [];
     order.forEach((t, k) => (cap[t] = base + (k < extra ? 1 : 0)));
@@ -359,7 +366,7 @@
       theme: cup.theme,
       merge: cup.merge,
       teams: cup.teams,
-      members: [...cup.members.values()].map(({ id, name, team, home, seq, pickSeq }) => ({ id, name, team, home, seq, pickSeq })),
+      members: [...cup.members.values()].map(({ id, name, team, home, seq, pickSeq, bot }) => ({ id, name, team, home, seq, pickSeq, bot })),
       rounds: cup.rounds,
       at: cup.at,
       last: cup.last,
@@ -382,7 +389,7 @@
         if (!m || typeof m.id !== "string") continue;
         const team = Number.isInteger(m.team) && m.team < cup.size ? m.team : null;
         const home = Number.isInteger(m.home) && m.home < cup.size ? m.home : null;
-        cup.members.set(m.id, { id: m.id, name: String(m.name || "Player"), team, home, seq: m.seq | 0, pickSeq: m.pickSeq | 0, connected: false });
+        cup.members.set(m.id, { id: m.id, name: String(m.name || "Player"), team, home, seq: m.seq | 0, pickSeq: m.pickSeq | 0, connected: false, bot: Boolean(m.bot) });
       }
       cup.rounds = Array.isArray(data.rounds) && data.rounds.every((r) => Array.isArray(r) && r.every((t) => t && typeof t === "object")) ? data.rounds : [];
       cup.at = data.at && Number.isInteger(data.at.r) && Number.isInteger(data.at.i) ? data.at : { r: 0, i: 0 };
@@ -423,6 +430,7 @@
     teamLabel,
     join,
     leave,
+    remove,
     pick,
     vip,
     needed,

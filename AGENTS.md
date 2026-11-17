@@ -14,7 +14,7 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
   unpredictable and fun with a lot of players"). Don't "fix" `RESPONSE`/dash momentum into tight controls.
 
 ## Architecture rules (keep these)
-- Classic scripts on `window.Uncinus`, no ES modules. Host load order: util → qr → net → face → match → cup → render → sound → host.
+- Classic scripts on `window.Uncinus`, no ES modules. Host load order: util → qr → net → face → match → cup → bots → render → sound → host.
   Controller: util → net → face → controller.
 - **The host is authoritative.** All match state lives in `js/match.js` (pure, no DOM, unit-tested); the host steps it
   at fixed 1/120 s substeps. Phones send `{t:"in", x, y, k}` (`sanitizeInput` clamps to the unit disc) and face photos.
@@ -86,6 +86,22 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
   (`C.replay`); the keyboard player is off in championship mode. Phone: `watching()` (cup on and not on the pitch, or the
   trophy) → `body.cup-watch` hides the pad and shows `#cupScreen` (team picks, status card with live score, bracket, commissioner
   button, Cheer); on the pitch the normal pad plus `#cupBar`. Big overlays avoid `backdrop-filter` (costly over the canvas on TVs).
+- **Bots** (Settings → 🤖 Bots, saved in `uncinus_bots` {size 0–5 players per team, skill easy|normal|hard}). `js/bots.js` is
+  pure and unit-tested: the host keeps `state.bots` (id → brain) and calls `AI.drive(m, brains, dt)` each frame before the
+  physics; it steers through `M.setInput` exactly like a phone (run vector + kick counter), so bots obey the same floaty
+  physics. Brains think every `SKILLS[skill].think` s; per team the bot nearest the ball chases, with 3+ bots one keeps
+  goal and the rest support in lanes (Easy: everyone chases). The chaser picks the most open of `SHOT_OFFSETS` around the
+  goal line (two bots running head-on into one ball squeeze it back through one of them), won't dash into an opponent
+  pressed on the far side of the ball, boots a dead ball only if that isn't back toward its own goal, hesitates a moment
+  at each kickoff (`hesitate`, keyed off `m.phaseTime` resetting), and stands still for goals and full time. Host: ids
+  `bot-<random>`, names `🤖 <Name>` (`AI.pickName`); `isLocal(id)` (keyboard or bot) gets no messages and is never
+  disconnected or cleared by `welcome`/New room; `realPlayers()` excludes them. `fillBots()` runs every 0.5 s: normal
+  play tops each side up to `size` minus the people on it (bots step off when people join); in a championship it works
+  only in the lobby, per team, with cup members flagged `bot` (`C.join(..., { bot: true })`, saved with the cup — `vip`
+  skips bots, `balance` moves bots before people, `C.remove` drops one). Bots belong to a mode: switching drops them, and
+  a saved championship re-adopts its bot members.
+- Ball–player contacts resolve in a rotating order (`m.turn`): otherwise whoever joined last wins every scrum (bots made
+  it obvious; it affected people too).
 - TV browsers (the office TV lowercases URLs and may run an old Chromium): `render.js` polyfills `ctx.roundRect`; the frame
   loop schedules the next frame before running and catches errors; `watchFrameRate` trials 1× pixel density when most frames
   are slow and reverts if frames didn't get faster (30 fps caps like Energy Saver aren't render cost). Keep host-loaded scripts
@@ -98,7 +114,7 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
 - `[hidden] { display:none !important }` is required.
 
 ## Testing
-- `node --test tests/*.test.js` (match physics, championship, QR, util); `cd relay && npm test` (boots wrangler dev).
+- `node --test tests/*.test.js` (match physics, championship, bots, QR, util); `cd relay && npm test` (boots wrangler dev).
 - UI verified with headless Chrome + playwright-core (host + phone contexts against a local relay; not checked in).
   Run it under `caffeinate` — a sleeping Mac stalls the headless browser and makes waits time out.
 

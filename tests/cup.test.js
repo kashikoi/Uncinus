@@ -301,3 +301,31 @@ test("notes tell each phone where they stand", () => {
   assert.equal(C.note(cup, inIt), "🏆 You're the champions!", "as soon as the final whistle goes");
   assert.match(C.note(cup, waiting), /🏆 The .* are the champions!/);
 });
+
+test("bots: never the commissioner, first to move when teams are evened up, and remembered across a reload", () => {
+  const cup = C.createCup({ size: 4, theme: "feast", rand: seeded(3) });
+  C.join(cup, "bot-a", "🤖 Gizmo", { bot: true });
+  C.join(cup, "bot-b", "🤖 Bolt", { bot: true });
+  C.pick(cup, "bot-a", 0);
+  C.pick(cup, "bot-b", 0);
+  assert.equal(C.vip(cup), null, "no person here yet");
+  C.join(cup, "human001", "Ken");
+  C.pick(cup, "human001", 0);
+  assert.equal(C.vip(cup), "human001");
+  C.join(cup, "human002", "Ann");
+  // Team 0 has two bots that picked before Ken; evening up must move a bot, not Ken.
+  C.start(cup);
+  assert.equal(cup.members.get("human001").team, 0);
+  const moved = cup.moves.map((mv) => mv.id);
+  assert.ok(moved.some((id) => id.startsWith("bot-")) && !moved.includes("human001"));
+  const copy = C.load(JSON.parse(JSON.stringify(C.save(cup))));
+  assert.equal(copy.members.get("bot-a").bot, true);
+  assert.equal(copy.members.get("human001").bot, false);
+});
+
+test("remove drops a member", () => {
+  const { cup, people } = lobby(3);
+  assert.equal(C.remove(cup, people[2]), true);
+  assert.equal(cup.members.has(people[2]), false);
+  assert.equal(C.remove(cup, people[2]), false);
+});

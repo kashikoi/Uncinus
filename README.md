@@ -85,6 +85,21 @@ which gives the other team a walkover. Turning the mode off pauses the champions
 or restart of the big screen: it reopens the same room and phones reconnect by themselves.
 Settings → **Replay this match** restarts the tie being played from its warm-up.
 
+## Bots
+
+**Settings → 🤖 Bots** tops the teams up with computer players, so anyone can play — on your own against a bot, or a
+few friends against a full team. Choose how many players each team should have (1–5) and how good the bots are
+(**Easy** bots all chase the ball like kids; **Normal** and **Hard** bots spread out into a chaser, support and a
+keeper, react faster and aim better). People always come first: when someone joins a team, one of its bots steps
+off, and bots come back when people leave. Bots play by the same rules as everyone — they steer the same floaty
+blocks through the same controls a phone sends (a run direction and kick presses) — and wear a 🤖 on their name
+tag.
+
+In a championship, bots fill every team in the lobby (pick your team and a bot makes room), play their matches, can
+win the Golden Boot, and never become the commissioner; once it starts, the teams stay as they are. To try a
+championship on your own: Bots → 2 per team, switch on Championship mode, join with your phone, pick a team and
+start it.
+
 ### On a TV
 
 Open `kashikoi.github.io/uncinus` (TV browsers that lowercase the address still land on the game) and press OK once
@@ -127,7 +142,7 @@ to phones via the QR link; `?relay=default` resets it. Over plain `http://` iOS 
 ## Tests
 
 ```sh
-node --test tests/*.test.js     # match physics, championship, QR encoder, helpers
+node --test tests/*.test.js     # match physics, championship, bots, QR encoder, helpers
 (cd relay && npm test)          # relay integration
 ```
 

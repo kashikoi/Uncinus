@@ -6,13 +6,13 @@
   <title>Sky Soccer — every phone is a player</title>
   <meta name="description" content="Party soccer in the clouds: the Mac is the pitch, every phone is a blocky player." />
   <meta name="theme-color" content="#0f172a" />
-  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.11.16.2" />
-  <link rel="apple-touch-icon" href="icon.svg?v=2026.11.16.2" />
-  <link rel="manifest" href="manifest.webmanifest?v=2026.11.16.2" />
+  <link rel="icon" type="image/svg+xml" href="icon.svg?v=2026.11.17.1" />
+  <link rel="apple-touch-icon" href="icon.svg?v=2026.11.17.1" />
+  <link rel="manifest" href="manifest.webmanifest?v=2026.11.17.1" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap" />
-  <link rel="stylesheet" href="styles.css?v=2026.11.16.2" />
+  <link rel="stylesheet" href="styles.css?v=2026.11.17.1" />
   <script>
     // Resolve atmosphere before first paint to prevent a flash of the wrong theme.
     (function () {
@@ -219,6 +219,28 @@
       </div>
     </section>
     <section class="modal__section">
+      <h3>&#129302; Bots</h3>
+      <p class="muted">Computer players keep the teams topped up, so anyone can play &mdash; even on your own. People always come first: when someone joins a team, one of its bots steps off. In a championship, bots fill every team in the lobby, play their matches, and never become the commissioner.</p>
+      <div class="cup-settings__row"><span>Per team</span>
+        <div class="theme-picker" id="botSizePicker" role="radiogroup" aria-label="Players per team with bots">
+          <button type="button" class="theme-chip" data-bots="0">Off</button>
+          <button type="button" class="theme-chip" data-bots="1">1</button>
+          <button type="button" class="theme-chip" data-bots="2">2</button>
+          <button type="button" class="theme-chip" data-bots="3">3</button>
+          <button type="button" class="theme-chip" data-bots="4">4</button>
+          <button type="button" class="theme-chip" data-bots="5">5</button>
+        </div>
+      </div>
+      <div class="cup-settings__row bot-skill"><span>Skill</span>
+        <div class="theme-picker" id="botSkillPicker" role="radiogroup" aria-label="Bot skill">
+          <button type="button" class="theme-chip" data-skill="easy">Easy</button>
+          <button type="button" class="theme-chip" data-skill="normal">Normal</button>
+          <button type="button" class="theme-chip" data-skill="hard">Hard</button>
+        </div>
+      </div>
+      <p class="muted bot-count" id="botCount"></p>
+    </section>
+    <section class="modal__section">
       <h3>Rules</h3>
       <label class="toggle">
         <input type="checkbox" id="teamPickToggle" />
@@ -261,14 +283,15 @@
     <p class="modal__foot muted">Sky Soccer <span id="version"></span> · part of the kashikoi cloud suite</p>
   </dialog>
 
-  <script src="js/util.js?v=2026.11.16.2"></script>
-  <script src="js/qr.js?v=2026.11.16.2"></script>
-  <script src="js/net.js?v=2026.11.16.2"></script>
-  <script src="js/face.js?v=2026.11.16.2"></script>
-  <script src="js/match.js?v=2026.11.16.2"></script>
-  <script src="js/cup.js?v=2026.11.16.2"></script>
-  <script src="js/render.js?v=2026.11.16.2"></script>
-  <script src="js/sound.js?v=2026.11.16.2"></script>
-  <script src="js/host.js?v=2026.11.16.2"></script>
+  <script src="js/util.js?v=2026.11.17.1"></script>
+  <script src="js/qr.js?v=2026.11.17.1"></script>
+  <script src="js/net.js?v=2026.11.17.1"></script>
+  <script src="js/face.js?v=2026.11.17.1"></script>
+  <script src="js/match.js?v=2026.11.17.1"></script>
+  <script src="js/cup.js?v=2026.11.17.1"></script>
+  <script src="js/bots.js?v=2026.11.17.1"></script>
+  <script src="js/render.js?v=2026.11.17.1"></script>
+  <script src="js/sound.js?v=2026.11.17.1"></script>
+  <script src="js/host.js?v=2026.11.17.1"></script>
 </body>
 </html>

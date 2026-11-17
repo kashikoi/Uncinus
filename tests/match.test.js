@@ -645,3 +645,27 @@ test("big teams line up in a wider grid that stays on their own half", () => {
   }
   assert.deepEqual(M.formationSpot("left", 4, false, 6), M.formationSpot("left", 4), "small teams keep the classic grid");
 });
+
+test("ball scrums don't favour whoever joined last", () => {
+  // Two players shove the ball from opposite sides; over many scrums it shouldn't keep popping out the same way.
+  let leftWins = 0;
+  let rightWins = 0;
+  for (let i = 0; i < 40; i++) {
+    const m = M.createMatch();
+    m.turn = i; // scrums start at different moments of a game
+    const a = M.addPlayer(m, "aaaaaa", "A", "left");
+    const b = M.addPlayer(m, "bbbbbb", "B", "right");
+    const y = M.CY + 200 + (i % 5) * 3;
+    Object.assign(a, { x: M.CX - 80, y, vx: 0, vy: 0 });
+    Object.assign(b, { x: M.CX + 80, y, vx: 0, vy: 0 });
+    Object.assign(m.ball, { x: M.CX + (i % 7) - 3, y, vx: 0, vy: 0 });
+    M.setInput(m, a.id, { x: 1, y: 0, k: 0 });
+    M.setInput(m, b.id, { x: -1, y: 0, k: 0 });
+    M.setInput(m, a.id, { x: 1, y: 0, k: 1 });
+    M.setInput(m, b.id, { x: -1, y: 0, k: 1 });
+    for (let f = 0; f < 90; f++) M.step(m, 1 / 120);
+    if (m.ball.x > M.CX + 60) leftWins++;
+    else if (m.ball.x < M.CX - 60) rightWins++;
+  }
+  assert.ok(leftWins >= 8 && rightWins >= 8, `both sides win some scrums (left ${leftWins}, right ${rightWins})`);
+});

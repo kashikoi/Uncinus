@@ -111,6 +111,7 @@
       flower: null,
       flowerIn: 0,
       rand: Math.random,
+      turn: 0, // rotates which player's ball contact resolves first
       // Championship matches: the host kicks off ("pre" waits) and moves on after full time ("full" holds).
       manual: false,
       maxPlayers: MAX_PLAYERS,
@@ -679,7 +680,16 @@
     const sub = Math.max(1, Math.ceil((Math.hypot(m.ball.vx, m.ball.vy) * dt) / (BALL_R * 0.8)));
     for (let s = 0; s < sub; s++) {
       stepBall(m, dt / sub);
-      if (m.phase === "play") for (const p of list) if (m.players.has(p.id)) collidePlayerBall(m, p);
+      if (m.phase === "play") {
+        // Whoever touches the ball last in a substep wins a scrum, so rotate the order: nobody gets a standing edge
+        // just for joining later.
+        const n = list.length;
+        m.turn = (m.turn + 1) % Math.max(1, n);
+        for (let i = 0; i < n; i++) {
+          const p = list[(m.turn + i) % n];
+          if (m.players.has(p.id)) collidePlayerBall(m, p);
+        }
+      }
       // Player contact can displace the ball through a wall, so constrain it last.
       constrainBall(m.ball);
     }
