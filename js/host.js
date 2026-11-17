@@ -789,7 +789,8 @@
       el.cupQr.dataset.url = url;
     }
     el.cupRoom.textContent = state.room;
-    el.cupUrl.textContent = shortPlayUrl();
+    // Let the address wrap only after a slash.
+    el.cupUrl.innerHTML = esc(shortPlayUrl()).replace(/\//g, "/<wbr>");
     const people = [...cup.members.values()].filter((p) => p.connected).sort((a, b) => a.seq - b.seq);
     el.cupTeams.dataset.size = cup.size;
     el.cupTeams.innerHTML = cup.teams

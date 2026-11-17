@@ -1790,9 +1790,8 @@ body[data-cup="champion"] .roster {
 }
 
 .cup-lobby__url {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: var(--ink-soft);
-  word-break: break-all;
 }
 
 .cup-teams {
