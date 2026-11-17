@@ -456,8 +456,20 @@ test("a timed game waits for the first player, then counts each half down", () =
   assert.deepEqual(periods(m), ["first"]);
 });
 
-test("half time: teams swap ends straight into the second-half kickoff", () => {
+test("half time: by default teams keep their ends into the second-half kickoff", () => {
   const m = M.createMatch();
+  M.setGameLength(m, 5);
+  const ann = M.addPlayer(m, "aaaaaa", "Ann");
+  runPlay(m, 150.1);
+  assert.equal(m.period, "second");
+  assert.equal(m.swapped, false);
+  assert.equal(M.defends(m, "left"), "left");
+  assert.ok(ann.x < M.CX, "kickoff on the same half");
+});
+
+test("half time with swapEnds: teams swap ends straight into the second-half kickoff", () => {
+  const m = M.createMatch();
+  m.swapEnds = true;
   M.setGameLength(m, 5);
   const ann = M.addPlayer(m, "aaaaaa", "Ann"); // left team, defends the left end
   const bob = M.addPlayer(m, "bbbbbb", "Bob");
@@ -475,6 +487,7 @@ test("half time: teams swap ends straight into the second-half kickoff", () => {
 
 test("after the swap, goals still count for the team that attacked", () => {
   const m = M.createMatch();
+  m.swapEnds = true;
   M.setGameLength(m, 5);
   const ann = M.addPlayer(m, "aaaaaa", "Ann"); // left team
   runPlay(m, 150.1);
@@ -537,8 +550,8 @@ test("level at the end: next goal wins, with no clock", () => {
   runPlay(m, 120);
   assert.equal(m.period, "golden", "no time limit until someone scores");
   M.drainEvents(m);
-  // Blue attacks the left goal in the second half.
-  Object.assign(m.ball, { x: M.PITCH.L + 60, y: M.CY, vx: -700, vy: 0, lastTouch: ann.id });
+  // Ends don't swap by default: blue still attacks the right goal.
+  Object.assign(m.ball, { x: M.PITCH.R - 60, y: M.CY, vx: 700, vy: 0, lastTouch: ann.id });
   runPlay(m, 0.3);
   assert.equal(m.period, "full");
   assert.deepEqual(m.score, { left: 1, right: 0 });

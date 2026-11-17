@@ -33,7 +33,7 @@ outside the net does not score. Goals pop confetti on the big screen and flash e
 **Reset score** and **New room**.
 
 **Timed games** (Settings → Game length: no limit, 5, 10, 15 or 30 min; default 10). The clock starts when the first
-player joins and each half counts down; at half time the teams swap ends and kick off the second half straight away.
+player joins and each half counts down; at half time the second half kicks off straight away (Settings → Rules → **Swap ends at half time** makes the teams switch ends too; off by default).
 If it's level when time runs out, it's **next goal wins** with no time limit. At full time the result shows on the
 big screen and every phone (won / lost), and a new game kicks off by itself 20 seconds later. Goals pause the clock.
 Settings → **New game** restarts.
@@ -73,7 +73,7 @@ to normal play.
    undecided fill the gaps — and drawn into a bracket: semi-finals, then the final (8 teams add quarter-finals).
 3. **Take turns.** Before each tie the two teams walk onto the pitch for a 30-second warm-up (phones buzz "YOU'RE
    UP!") while the big screen shows who's playing and the bracket; **Kick off now** on the big screen skips the wait. Ties are
-   short timed games (2–5 min, default 4) with the usual half-time swap, and level at the end means next goal wins,
+   short timed games (2–5 min, default 4) (ends swap at half time if that rule is on), and level at the end means next goal wins,
    so every tie has a winner. Everyone else's phone shows the live score, when they play next, and a 📣 **Cheer**
    button that floats emoji up the big screen.
 4. **Crown the champions** — trophy screen, confetti, fanfare, and the ⚽ Golden Boot for the top scorer. Then

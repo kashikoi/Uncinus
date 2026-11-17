@@ -76,7 +76,7 @@
   const GROW_RATE = 6; // how fast size eases toward its target (1/s)
   const BUMP_SPEED = 140; // closing speed (px/s) for a player–player crash to count as a "bump" (oof!)
 
-  // Timed games: two halves counting down (teams swap ends at half time, straight into the second-half kickoff),
+  // Timed games: two halves counting down (straight into the second-half kickoff; teams swap ends only if `swapEnds`),
   // "next goal wins" if it's level at the end, and a full-time result before the next game starts by itself.
   // Length 0 = no limit (endless play, no clock).
   const GAME_LENGTHS = [0, 5, 10, 15, 30]; // minutes
@@ -115,7 +115,8 @@
       length: 0, // seconds for the whole game; 0 = no limit
       period: "free", // free | pre | first | second | golden (next goal wins) | full
       clock: 0, // seconds left in the current period
-      swapped: false, // teams swap ends at half time
+      swapped: false, // ends are swapped (2nd half, when `swapEnds` is on)
+      swapEnds: false, // swap ends at half time (a Settings rule; off by default)
       score: { left: 0, right: 0 },
       players: new Map(),
       ball: { x: CX, y: CY, vx: 0, vy: 0, spin: 0, lastTouch: null },
@@ -331,9 +332,9 @@
         m.clock = Math.max(0, m.clock - dt);
         if (m.clock > 0) break;
         if (m.period === "first") {
-          // Half time: swap ends and kick off the second half straight away.
+          // Half time: (maybe) swap ends and kick off the second half straight away.
           clearPowerUps(m);
-          m.swapped = !m.swapped;
+          if (m.swapEnds) m.swapped = !m.swapped;
           resetKickoff(m);
           setPeriod(m, "second", m.length / 2);
         } else if (m.score.left === m.score.right) {

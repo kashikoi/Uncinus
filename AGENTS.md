@@ -56,7 +56,8 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
   only (`team-chip`); `TEAMS[].name` ("Blue"/"Orange") is just for aria labels and the `you.teamName` field.
 - Timed games (`uncinus_length`, default 10, 0 = no limit): `m.period` free | pre | first | second | golden | full,
   `m.clock` counts down (paused during goal celebrations). `pre` waits for the first player. When the 1st half ends
-  `m.swapped` flips ends and the 2nd half kicks off immediately (no halftime break — owner removed the halftime show).
+  `m.swapped` flips ends only if `m.swapEnds` (Settings rule `uncinus_swap_ends`, default off; `period` messages carry
+  `swapped`) and the 2nd half kicks off immediately (no halftime break — owner removed the halftime show).
   Level after the 2nd half → `golden` (next goal wins, no clock; `checkGoal` ends the game). No penalty shootouts
   (owner abandoned them). Full time shows `FULLTIME_SHOW` s then `resetMatch` (new game). Ends are never hard-coded: use `M.defends(m, team)` /
   `M.teamAt(m, end)` (goals, formation, renderer colours). Events `period{period,clock,score}`; host→player

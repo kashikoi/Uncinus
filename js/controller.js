@@ -191,7 +191,7 @@
     document.documentElement.style.setProperty("--me", msg.color);
   }
 
-  // Each end of the mini pitch wears the colour of the team defending it (they swap at half time).
+  // Each end of the mini pitch wears the colour of the team defending it (they can swap at half time).
   function renderAttack() {
     const left = state.defends === "left";
     const teamAt = (end) => (state.sides.left === end ? "left" : "right");
@@ -241,7 +241,8 @@
     } else {
       el.periodScreen.hidden = true;
       if (msg.period === "second" && prev === "first") {
-        powerFlash("is-swap", "🔄 2nd HALF", state.attack ? `Ends swapped — ${state.attack}` : "Teams swapped ends", [120, 60, 120]);
+        if (msg.swapped) powerFlash("is-swap", "🔄 2nd HALF", state.attack ? `Ends swapped — ${state.attack}` : "Teams swapped ends", [120, 60, 120]);
+        else powerFlash("is-swap", "⚽ 2nd HALF", state.attack || "Same ends — keep going!", [120, 60, 120]);
       } else if (msg.period === "golden" && prev !== "golden") {
         powerFlash("is-golden", "⚡ NEXT GOAL WINS!", "All square — no time limit now", [80, 40, 80, 40, 200]);
       } else if (msg.period === "first" && prev && prev !== "first") {

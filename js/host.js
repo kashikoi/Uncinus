@@ -10,6 +10,7 @@
   const BOT_SIZES = [0, 1, 2, 3, 4, 5];
   const TEAM_PICK_KEY = "uncinus_team_pick";
   const MAYHEM_KEY = "uncinus_mayhem";
+  const SWAP_KEY = "uncinus_swap_ends"; // teams swap ends at half time (off unless switched on)
   const FLOWER_KEY = "uncinus_flower_points"; // what a goal is worth with flower power
   const POWERS_KEY = "uncinus_powers"; // which Mayhem powers are switched on (all, by default)
   const LENGTH_KEY = "uncinus_length";
@@ -335,7 +336,7 @@
 
   function periodMessage() {
     const m = state.match;
-    return { t: "period", period: m.period, clock: Math.ceil(m.clock), score: { ...m.score } };
+    return { t: "period", period: m.period, clock: Math.ceil(m.clock), score: { ...m.score }, swapped: m.swapped };
   }
 
   const fmtClock = (s) => `${Math.floor(Math.ceil(s) / 60)}:${String(Math.ceil(s) % 60).padStart(2, "0")}`;
@@ -352,7 +353,7 @@
       showStarToast("⚽ Kick off — 1st half!");
     } else if (period === "second") {
       el.periodBanner.hidden = true;
-      showStarToast("🔄 2nd half — teams swapped ends!");
+      showStarToast(state.match.swapped ? "🔄 2nd half — teams swapped ends!" : "⚽ Kick off — 2nd half!");
     } else if (period === "golden") {
       showPeriodBanner("NEXT GOAL WINS!", `⚡ All square at ${score.left}–${score.right} — no time limit now.`, "#fde047");
       setTimeout(() => {
@@ -454,6 +455,9 @@
     if (key === TEAM_PICK_KEY) {
       state.teamPick = on;
       for (const p of realPlayers()) sendYou(p);
+    } else if (key === SWAP_KEY) {
+      // Takes effect at the next half time; a game already in its 2nd half keeps its ends.
+      state.match.swapEnds = on;
     } else {
       M.setMayhem(state.match, on);
       if (!on) el.starToast.hidden = true;
@@ -470,6 +474,7 @@
     };
     state.teamPick = get(TEAM_PICK_KEY);
     M.setMayhem(state.match, get(MAYHEM_KEY));
+    state.match.swapEnds = get(SWAP_KEY);
     M.setFlowerPoints(state.match, Number(stored(FLOWER_KEY)) || M.FLOWER_POINTS);
     try {
       const saved = JSON.parse(stored(POWERS_KEY) || "{}") || {};
@@ -1163,6 +1168,7 @@
     updateBotPickers();
     el.teamPickToggle.checked = state.teamPick;
     el.mayhemToggle.checked = state.match.mayhem;
+    el.swapToggle.checked = state.match.swapEnds;
     updateFlowerPicker();
     updatePowerPicker();
     // In a championship, "New game" replays the tie being played (from its warm-up).
@@ -1269,7 +1275,7 @@
       "pitch", "status", "statusText", "kbBtn", "fsBtn", "settingsBtn", "joinCard", "joinMini", "joinClose", "qr", "miniQr",
       "roomCode", "miniRoom", "joinUrl", "joinLink", "emptyHint", "banner", "bannerText", "bannerBtn", "settings",
       "soundBtn", "soundOn", "soundOff", "themePicker", "relayInput", "relaySave", "relayReset", "relayError", "newRoomBtn", "resetBtn", "version", "appVersion", "settingsClose",
-      "scoreLeft", "scoreRight", "goalBanner", "goalWho", "teamPickToggle", "mayhemToggle", "flowerPicker", "powerPicker", "starToast", "goalWord", "matchClock", "periodBanner",
+      "scoreLeft", "scoreRight", "goalBanner", "goalWho", "teamPickToggle", "swapToggle", "mayhemToggle", "flowerPicker", "powerPicker", "starToast", "goalWord", "matchClock", "periodBanner",
       "periodWord", "periodSub", "periodCount", "lengthPicker",
       "cupToggle", "cupSettings", "cupLocked", "cupSizePicker", "cupLengthPicker", "cupThemePicker", "cupMergeToggle", "cupRestartBtn",
       "cupNameLeft", "cupNameRight", "cupLobby", "cupQr", "cupRoom", "cupUrl", "cupTeams", "cupWaiting", "cupStart",
@@ -1309,6 +1315,7 @@
     });
     el.teamPickToggle.addEventListener("change", () => setRule(TEAM_PICK_KEY, el.teamPickToggle.checked));
     el.mayhemToggle.addEventListener("change", () => setRule(MAYHEM_KEY, el.mayhemToggle.checked));
+    el.swapToggle.addEventListener("change", () => setRule(SWAP_KEY, el.swapToggle.checked));
     el.powerPicker.addEventListener("click", (ev) => {
       const chip = ev.target.closest("[data-power]");
       if (chip) togglePower(chip.dataset.power);
