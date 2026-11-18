@@ -49,6 +49,16 @@
   const FLOWER_CHOICES = [2, 3, 5];
   const FLOWER_GAP_MIN = 45;
   const FLOWER_GAP_MAX = 90;
+  // ...and a magic brick turns up now and then: grab it and your team's goal is bricked down to a sliver
+  // (BRICK_SHRINK of its width) while the other team's goal swells to BRICK_GROW× for BRICK_POWER seconds.
+  const BRICK_R = 20;
+  const BRICK_LIFE = 15;
+  const BRICK_POWER = 10;
+  const BRICK_SHRINK = 0.45;
+  const BRICK_GROW = 1.6;
+  const BRICK_GAP_MIN = 45;
+  const BRICK_GAP_MAX = 90;
+  const MOUTH_RATE = 3; // how fast the goal mouths ease to their new size (1/s)
 
   // ...and a turkey gets loose now and then: it scurries about, flapping, and runs from anyone who comes close.
   // Catch it and the other team falls into a food coma — stuffed, they move at COMA_SLOW speed and can't kick.
@@ -65,13 +75,14 @@
   const TURKEY_GAP_MIN = 50;
   const TURKEY_GAP_MAX = 95;
   // The Mayhem powers, each of which can be switched off.
-  const POWERS = ["star", "shroom", "flower", "turkey"];
+  const POWERS = ["star", "shroom", "flower", "brick", "turkey"];
 
   // Stationary pick-ups: where they live on the match, the player field they power up, and their timings.
   // Only one player at a time holds each kind of power.
   const ITEMS = {
     shroom: { field: "big", r: SHROOM_R, life: SHROOM_LIFE, power: BIG_POWER, gapMin: SHROOM_GAP_MIN, gapMax: SHROOM_GAP_MAX },
     flower: { field: "flower", r: FLOWER_R, life: FLOWER_LIFE, power: FLOWER_POWER, gapMin: FLOWER_GAP_MIN, gapMax: FLOWER_GAP_MAX },
+    brick: { field: "brick", r: BRICK_R, life: BRICK_LIFE, power: BRICK_POWER, gapMin: BRICK_GAP_MIN, gapMax: BRICK_GAP_MAX },
   };
   const GROW_RATE = 6; // how fast size eases toward its target (1/s)
   const BUMP_SPEED = 140; // closing speed (px/s) for a player–player crash to count as a "bump" (oof!)
@@ -100,6 +111,23 @@
   const playing = (m) => m.period === "free" || m.period === "first" || m.period === "second" || m.period === "golden";
   const half = (p) => HALF * (p.scale || 1);
   const mass = (p) => (p.scale || 1) ** 2;
+  const mouthAt = (m, end) => (m && m.mouth ? m.mouth[end] : GOAL_HALF);
+
+  // Where each goal mouth is heading: a brick holder's own goal shrinks and the other one grows.
+  function mouthTarget(m, end) {
+    for (const p of m.players.values()) {
+      if (p.brick > 0) return GOAL_HALF * (defends(m, p.team) === end ? BRICK_SHRINK : BRICK_GROW);
+    }
+    return GOAL_HALF;
+  }
+
+  function stepMouths(m, dt) {
+    for (const end of ["left", "right"]) {
+      const target = mouthTarget(m, end);
+      m.mouth[end] += (target - m.mouth[end]) * Math.min(1, MOUTH_RATE * dt);
+      if (Math.abs(target - m.mouth[end]) < 0.05) m.mouth[end] = target;
+    }
+  }
 
   // Does a circle at (x, y) with radius r touch player p's block?
   function touches(p, x, y, r) {
@@ -130,9 +158,12 @@
       shroomIn: 0,
       flower: null,
       flowerIn: 0,
+      brick: null,
+      brickIn: 0,
+      mouth: { left: GOAL_HALF, right: GOAL_HALF }, // half the goal mouth height at each end (the brick changes it)
       turkey: null,
       turkeyIn: 0,
-      powers: { star: true, shroom: true, flower: true, turkey: true },
+      powers: { star: true, shroom: true, flower: true, brick: true, turkey: true },
       rand: Math.random,
       flowerPoints: FLOWER_POINTS,
       turn: 0, // rotates which player's ball contact resolves first
@@ -195,6 +226,7 @@
       star: 0,
       big: 0,
       flower: 0,
+      brick: 0,
       coma: 0,
       scale: 1,
       connected: true,
@@ -465,8 +497,9 @@
     b.spin += (speed / BALL_R) * dt;
   }
 
-  function constrainBall(b) {
-    const inMouth = Math.abs(b.y - CY) < GOAL_HALF;
+  function constrainBall(m, b) {
+    const gh = mouthAt(m, b.x < CX ? "left" : "right");
+    const inMouth = Math.abs(b.y - CY) < gh;
     const inGoal = inMouth && (b.x < PITCH.L || b.x > PITCH.R);
 
     if (inGoal) {
@@ -476,11 +509,11 @@
         b.x = back;
         b.vx *= -0.3;
       }
-      if (b.y < CY - GOAL_HALF + BALL_R) {
-        b.y = CY - GOAL_HALF + BALL_R;
+      if (b.y < CY - gh + BALL_R) {
+        b.y = CY - gh + BALL_R;
         b.vy = Math.abs(b.vy) * 0.3;
-      } else if (b.y > CY + GOAL_HALF - BALL_R) {
-        b.y = CY + GOAL_HALF - BALL_R;
+      } else if (b.y > CY + gh - BALL_R) {
+        b.y = CY + gh - BALL_R;
         b.vy = -Math.abs(b.vy) * 0.3;
       }
     } else {
@@ -501,15 +534,17 @@
         }
       }
     }
-    for (const px of [PITCH.L, PITCH.R]) {
-      bounceOffPost(b, px, CY - GOAL_HALF);
-      bounceOffPost(b, px, CY + GOAL_HALF);
+    for (const end of ["left", "right"]) {
+      const px = end === "left" ? PITCH.L : PITCH.R;
+      bounceOffPost(b, px, CY - mouthAt(m, end));
+      bounceOffPost(b, px, CY + mouthAt(m, end));
     }
   }
 
   function checkGoal(m) {
     const b = m.ball;
-    if (b.y - BALL_R < CY - GOAL_HALF || b.y + BALL_R > CY + GOAL_HALF) return;
+    const gh = mouthAt(m, b.x < CX ? "left" : "right");
+    if (b.y - BALL_R < CY - gh || b.y + BALL_R > CY + gh) return;
     let team = null;
     if (b.x + BALL_R < PITCH.L && b.x - BALL_R >= PITCH.L - GOAL_DEPTH) team = teamAt(m, "right");
     else if (b.x - BALL_R > PITCH.R && b.x + BALL_R <= PITCH.R + GOAL_DEPTH) team = teamAt(m, "left");
@@ -630,7 +665,7 @@
     }
   }
 
-  // Mushrooms and flowers sprout in place and wait to be picked up.
+  // Mushrooms, flowers and bricks sprout in place and wait to be picked up.
   function stepItem(m, dt, list, kind) {
     if (!m.mayhem || !m.powers[kind] || m.phase !== "play" || !playing(m)) return;
     const item = ITEMS[kind];
@@ -834,6 +869,7 @@
 
     const list = [...m.players.values()];
     m.powered = list.some((p) => p.star > 0);
+    stepMouths(m, dt);
     stepStar(m, dt, list);
     for (const kind of Object.keys(ITEMS)) stepItem(m, dt, list, kind);
     stepTurkey(m, dt, list);
@@ -854,7 +890,7 @@
         }
       }
       // Player contact can displace the ball through a wall, so constrain it last.
-      constrainBall(m.ball);
+      constrainBall(m, m.ball);
     }
 
     if (m.phase === "play" && playing(m)) checkGoal(m);
@@ -913,6 +949,13 @@
     POWERS,
     FLOWER_GAP_MIN,
     FLOWER_GAP_MAX,
+    BRICK_R,
+    BRICK_LIFE,
+    BRICK_POWER,
+    BRICK_SHRINK,
+    BRICK_GROW,
+    BRICK_GAP_MIN,
+    BRICK_GAP_MAX,
     DISCONNECT_GRACE,
     BUMP_SPEED,
     TEAMS,
@@ -921,6 +964,7 @@
     FULLTIME_SHOW,
     defends,
     teamAt,
+    mouthAt,
     setGameLength,
     createMatch,
     addPlayer,

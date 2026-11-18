@@ -274,6 +274,13 @@
         sendTo(ev.id, { t: "flower", on: true, secs: M.FLOWER_POWER, points: state.match.flowerPoints });
       } else if (ev.type === "flower-end") {
         sendTo(ev.id, { t: "flower", on: false });
+      } else if (ev.type === "brick-spawn") {
+        showStarToast("🧱 A magic brick appeared — grab it to wall up your goal!");
+      } else if (ev.type === "brick-get") {
+        showStarToast(`🧱 ${ev.name} bricked up their goal — the other goal just got HUGE!`);
+        sendTo(ev.id, { t: "brick", on: true, secs: M.BRICK_POWER });
+      } else if (ev.type === "brick-end") {
+        sendTo(ev.id, { t: "brick", on: false });
       } else if (ev.type === "turkey-spawn") {
         showStarToast("🦃 A turkey's loose — catch it!");
       } else if (ev.type === "turkey-get") {
@@ -303,6 +310,7 @@
     } else if (ev.type === "goal") S.crowd();
     else if (ev.type === "shroom-get") S.grow();
     else if (ev.type === "flower-get") S.fanfare();
+    else if (ev.type === "brick-get") S.bricks();
     else if (ev.type === "turkey-get") S.gobble();
     else if (ev.type === "turkey-hop") S.flap(panAt(ev.x) * 0.7);
     else if (ev.type === "star-get") S.starOn(M.STAR_POWER);

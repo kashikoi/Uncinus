@@ -427,6 +427,43 @@ test("flower power doesn't multiply own goals, and wears off", () => {
   assert.deepEqual(m.score, { left: 1, right: 1 }, "back to a normal goal");
 });
 
+function brickMatch() {
+  const m = M.createMatch();
+  m.rand = seeded(12);
+  const ann = M.addPlayer(m, "aaaaaa", "Ann"); // left, defends the left goal
+  M.setMayhem(m, true);
+  m.brick = { x: ann.x, y: ann.y, age: 0 };
+  M.step(m, 1 / 120);
+  return { m, ann };
+}
+
+test("the brick shrinks the holder's goal and swells the other one, then wears off", () => {
+  const { m, ann } = brickMatch();
+  assert.equal(m.brick, null);
+  assert.ok(ann.brick > M.BRICK_POWER - 0.1);
+  assert.equal(M.drainEvents(m).find((e) => e.type === "brick-get").id, "aaaaaa");
+  run(m, 3);
+  assert.ok(Math.abs(M.mouthAt(m, "left") - M.GOAL_HALF * M.BRICK_SHRINK) < 0.1);
+  assert.ok(Math.abs(M.mouthAt(m, "right") - M.GOAL_HALF * M.BRICK_GROW) < 0.1);
+  run(m, M.BRICK_POWER);
+  assert.ok(M.drainEvents(m).some((e) => e.type === "brick-end"));
+  assert.deepEqual(m.mouth, { left: M.GOAL_HALF, right: M.GOAL_HALF });
+});
+
+test("a bricked-up goal turns away shots that would normally go in; the swollen one lets wide shots in", () => {
+  const { m } = brickMatch();
+  run(m, 3);
+  const y = M.CY + M.GOAL_HALF * 0.75; // inside a normal goal, outside the bricked one
+  Object.assign(m.ball, { x: M.PITCH.L + 60, y, vx: -700, vy: 0, lastTouch: null });
+  run(m, 0.3);
+  assert.deepEqual(m.score, { left: 0, right: 0 });
+  assert.ok(m.ball.vx > 0, "bounced off the bricks");
+  const wide = M.CY + M.GOAL_HALF * 1.3; // outside a normal goal, inside the swollen one
+  Object.assign(m.ball, { x: M.PITCH.R - 60, y: wide, vx: 700, vy: 0, lastTouch: "aaaaaa" });
+  run(m, 0.3);
+  assert.deepEqual(m.score, { left: 1, right: 0 });
+});
+
 const runPlay = (m, seconds) => {
   // Step in 1/60 s chunks without letting goals pause the clock.
   for (let t = 0; t < seconds; t += 1 / 60) M.step(m, 1 / 60);
@@ -708,13 +745,13 @@ function turkeyMatch() {
 
 test("every Mayhem power starts on, and a switched-off power never appears", () => {
   const m = M.createMatch();
-  assert.deepEqual(m.powers, { star: true, shroom: true, flower: true, turkey: true });
+  assert.deepEqual(m.powers, { star: true, shroom: true, flower: true, brick: true, turkey: true });
   m.rand = seeded(8);
   M.addPlayer(m, "aaaaaa", "Ann");
   M.setMayhem(m, true);
   for (const kind of M.POWERS) M.setPower(m, kind, false);
   run(m, 200);
-  assert.ok(!m.star && !m.shroom && !m.flower && !m.turkey);
+  assert.ok(!m.star && !m.shroom && !m.flower && !m.brick && !m.turkey);
   assert.ok(!M.drainEvents(m).some((e) => /-spawn$/.test(e.type)));
   M.setPower(m, "turkey", true);
   run(m, M.TURKEY_GAP_MAX + 1);

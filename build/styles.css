@@ -1475,6 +1475,24 @@ body.is-flower .me {
   box-shadow: 0 0 0 3px #f97316, 0 0 24px #dc2626;
 }
 
+/* ---------- Magic brick ---------- */
+.goal-flash.is-brick {
+  background: repeating-linear-gradient(0deg, #fecaca 0 4px, transparent 4px 34px), linear-gradient(160deg, #dc2626, #7f1d1d);
+  color: #fff;
+  padding: 0 24px;
+  text-align: center;
+  text-shadow: 0 2px 8px rgba(69, 10, 10, 0.7);
+}
+
+.goal-flash.is-brick span {
+  font-size: clamp(2rem, 11vw, 3.4rem);
+}
+
+body.is-brick .me {
+  border-color: #dc2626;
+  box-shadow: 0 0 0 3px #dc2626, 0 0 24px #7f1d1d;
+}
+
 /* ---------- Which way to attack ---------- */
 .attack-bar {
   display: flex;

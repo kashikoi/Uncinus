@@ -107,7 +107,8 @@
     const dir = M.defends(m, p.team) === "left" ? 1 : -1; // +1: we attack the right-hand goal
     const ownX = dir > 0 ? PITCH.L : PITCH.R;
     if (brain.rand() < 0.12) brain.aim = (brain.rand() * 2 - 1) * s.aim;
-    const line = shotLine(m, p, brain, dir > 0 ? PITCH.R + 30 : PITCH.L - 30, CY + brain.aim * (GOAL_HALF + 40));
+    const mouth = (end) => (M.mouthAt ? M.mouthAt(m, end) : GOAL_HALF);
+    const line = shotLine(m, p, brain, dir > 0 ? PITCH.R + 30 : PITCH.L - 30, CY + brain.aim * (mouth(dir > 0 ? "right" : "left") + 40));
     const gx = line.ux;
     const gy = line.uy;
     const px = p.x - b.x; // ball → me
@@ -155,14 +156,15 @@
       // A dead ball at our feet: boot it, as long as that doesn't send it back toward our own goal.
       else if (ready && brain.stuck > STUCK_TIME * (blocked ? 2 : 1) && (-px * dir) / dBall > -0.2) kick = true;
     } else {
-      const items = [m.star, m.shroom, m.flower, m.turkey].filter(Boolean);
+      const items = [m.star, m.shroom, m.flower, m.brick, m.turkey].filter(Boolean);
       const item = items.find((it) => Math.hypot(it.x - p.x, it.y - p.y) < 260);
       if (item) {
         tx = item.x; // Mayhem: grab a power-up that's close by
         ty = item.y;
       } else if (role === "keep") {
         tx = ownX + dir * 60;
-        ty = clamp(CY + (b.y - CY) * 0.7, CY - GOAL_HALF + 10, CY + GOAL_HALF - 10);
+        const gh = mouth(dir > 0 ? "left" : "right");
+        ty = clamp(CY + (b.y - CY) * 0.7, CY - gh + 10, CY + gh - 10);
         pace *= 0.9;
       } else {
         const f = defending ? 0.45 : 0.62; // between the ball and our goal, spread across the pitch

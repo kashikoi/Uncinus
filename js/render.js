@@ -19,7 +19,7 @@
 
   const U = root.Uncinus;
   const M = U.match;
-  const { W, H, PITCH, CX, CY, GOAL_HALF, GOAL_DEPTH, POST_R, HALF, BALL_R, TEAMS, STAR_R, STAR_LIFE, SHROOM_R, SHROOM_LIFE, FLOWER_R, FLOWER_LIFE } = M;
+  const { W, H, PITCH, CX, CY, GOAL_HALF, GOAL_DEPTH, POST_R, HALF, BALL_R, TEAMS, STAR_R, STAR_LIFE, SHROOM_R, SHROOM_LIFE, FLOWER_R, FLOWER_LIFE, BRICK_R, BRICK_LIFE } = M;
   const { FACE_OVAL } = U.face;
   // The frame of a face player: the same outline as a block's "Kick ready" ring (block + 9 px lift + 4 px margin).
   const FRAME = { half: HALF + 4, top: HALF + 4, bottom: HALF + 13 };
@@ -145,6 +145,17 @@
             rot: this.rand() * 6, age: 0, life: 1 + this.rand() * 0.5, color: ["#f97316", "#fde047", "#ef4444"][i % 3], size: 5 + this.rand() * 4,
           });
         }
+      } else if (ev.type === "brick-spawn") {
+        this.fx.push({ kind: "ring", x: ev.x, y: ev.y, age: 0, life: 0.6, color: "#b91c1c" });
+      } else if (ev.type === "brick-get") {
+        for (let i = 0; i < 24; i++) {
+          const a = this.rand() * Math.PI * 2;
+          const sp = 90 + this.rand() * 240;
+          this.fx.push({
+            kind: "confetti", x: ev.x, y: ev.y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 120,
+            rot: this.rand() * 6, age: 0, life: 0.9 + this.rand() * 0.5, color: ["#b91c1c", "#ea580c", "#fecaca"][i % 3], size: 7 + this.rand() * 4,
+          });
+        }
       } else if (ev.type === "turkey-spawn") {
         this.fx.push({ kind: "ring", x: ev.x, y: ev.y, age: 0, life: 0.6, color: "#b45309" });
       } else if (ev.type === "turkey-hop") {
@@ -248,6 +259,7 @@
       }
       if (m.shroom) this.drawShroom(ctx, pal, m.shroom);
       if (m.flower) this.drawFlower(ctx, pal, m.flower);
+      if (m.brick) this.drawBrick(ctx, pal, m.brick);
       this.drawShadow(ctx, pal, m.ball.x + 5, m.ball.y + BALL_R * 0.8, BALL_R * 1.05, 5, 1);
       this.drawTrails(ctx, players);
       for (const p of players) {
@@ -261,6 +273,7 @@
         this.drawPlayer(ctx, p);
         if (p.star > 0) this.drawStarAura(ctx, p);
         if (p.flower > 0) this.drawFlowerBadge(ctx, p, m.flowerPoints);
+        if (p.brick > 0) this.drawBrickBadge(ctx, p);
         ctx.restore();
         if (p.coma > 0) this.drawComa(ctx, p);
       }
@@ -358,9 +371,10 @@
       // Team-colour stripe along each end line (outside the goal mouth): the team defending that end.
       for (const end of ["left", "right"]) {
         const x = end === "left" ? PITCH.L - 11 : PITCH.R + 3;
+        const gh = Math.max(GOAL_HALF, M.mouthAt(m, end)); // a bricked-up goal's wall covers the rest
         ctx.fillStyle = TEAMS[M.teamAt(m, end)].color;
-        ctx.fillRect(x, PITCH.T - 2, 8, CY - GOAL_HALF - PITCH.T - POST_R + 2);
-        ctx.fillRect(x, CY + GOAL_HALF + POST_R, 8, PITCH.B - CY - GOAL_HALF - POST_R + 2);
+        ctx.fillRect(x, PITCH.T - 2, 8, CY - gh - PITCH.T - POST_R + 2);
+        ctx.fillRect(x, CY + gh + POST_R, 8, PITCH.B - CY - gh - POST_R + 2);
       }
     }
 
@@ -399,8 +413,9 @@
       for (const side of [-1, 1]) {
         const lineX = side < 0 ? PITCH.L : PITCH.R;
         const backX = lineX + side * GOAL_DEPTH;
-        const top = CY - GOAL_HALF;
-        const bottom = CY + GOAL_HALF;
+        const gh = M.mouthAt(m, side < 0 ? "left" : "right");
+        const top = CY - gh;
+        const bottom = CY + gh;
         const team = TEAMS[M.teamAt(m, side < 0 ? "left" : "right")];
         if (layer === "back") {
           ctx.fillStyle = pal.netBg;
@@ -422,6 +437,10 @@
           }
           ctx.stroke();
         } else {
+          if (gh < GOAL_HALF - 0.5) {
+            this.drawBrickWall(ctx, Math.min(lineX, backX), CY - GOAL_HALF - POST_R, GOAL_DEPTH, GOAL_HALF - gh + POST_R);
+            this.drawBrickWall(ctx, Math.min(lineX, backX), bottom, GOAL_DEPTH, GOAL_HALF - gh + POST_R);
+          }
           ctx.strokeStyle = team.color;
           ctx.lineWidth = 6;
           ctx.beginPath();
@@ -668,6 +687,80 @@
       ctx.restore();
     }
 
+    // Rows of red bricks with pale mortar filling a rectangle (the bricked-up part of a shrunken goal).
+    drawBrickWall(ctx, x, y, w, h) {
+      if (h <= 0) return;
+      const bw = 20;
+      const bh = 11;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x, y, w, h);
+      ctx.clip();
+      ctx.fillStyle = "#fecaca";
+      ctx.fillRect(x, y, w, h);
+      for (let row = 0, by = y + h; by > y - bh; row++, by -= bh) {
+        for (let bx = x - (row % 2 ? bw / 2 : 0); bx < x + w; bx += bw) {
+          ctx.fillStyle = (row + Math.round(bx / bw)) % 3 ? "#b91c1c" : "#991b1b";
+          ctx.fillRect(bx + 1, by - bh + 1, bw - 2, bh - 2);
+        }
+      }
+      ctx.restore();
+      ctx.strokeStyle = "#7f1d1d";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(x, y, w, h);
+    }
+
+    // A chunky red brick with a cheeky face and a golden shimmer; bobs about, blinks before it crumbles away.
+    drawBrick(ctx, pal, b) {
+      const left = BRICK_LIFE - b.age;
+      if (left < 3 && Math.floor(left * 6) % 2) return;
+      const grow = Math.min(1, b.age / 0.5);
+      const pop = grow < 1 ? grow * (1 + 0.3 * Math.sin(grow * Math.PI)) : 1;
+      const R = BRICK_R;
+      const bob = Math.sin(this.t * 3) * 4;
+      this.drawShadow(ctx, pal, b.x, b.y + R * 0.9, R * 1.1 * grow, 5 * grow, 0.8);
+      ctx.save();
+      ctx.translate(b.x, b.y - 6 + bob);
+      ctx.scale(pop * 1.25, pop * 1.25); // a size up so it reads across the room
+      ctx.rotate(Math.sin(this.t * 2) * 0.1);
+      const glow = ctx.createRadialGradient(0, 0, R * 0.4, 0, 0, R * 2);
+      glow.addColorStop(0, "rgba(253, 224, 71, 0.55)");
+      glow.addColorStop(1, "rgba(253, 224, 71, 0)");
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(0, 0, R * 2, 0, Math.PI * 2);
+      ctx.fill();
+      const w = R * 2.1;
+      const h = R * 1.25;
+      ctx.fillStyle = "#b91c1c";
+      ctx.strokeStyle = "#450a0a";
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.roundRect(-w / 2, -h / 2, w, h, 4);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#ef4444"; // top face highlight
+      ctx.fillRect(-w / 2 + 3, -h / 2 + 3, w - 6, 4);
+      ctx.fillStyle = "#7f1d1d"; // the two holes on the side
+      for (const hx of [-w * 0.27, w * 0.27]) {
+        ctx.beginPath();
+        ctx.ellipse(hx, h * 0.22, 3.5, 2.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = "#111827";
+      for (const ex of [-R * 0.22, R * 0.22]) {
+        ctx.beginPath();
+        ctx.ellipse(ex, -h * 0.05, 2, 4, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.strokeStyle = "#111827";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, h * 0.12, 4, 0.2, Math.PI - 0.2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
     // A strutting turkey: fanned tail feathers, flapping wings, bobbing head with a red wattle. It faces the way it's
     // going, flaps hard when it hops or bolts, and blinks before it flies off.
     drawTurkey(ctx, pal, tk) {
@@ -821,6 +914,34 @@
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(`${points}×`, bx, by + 1);
+      ctx.restore();
+    }
+
+    // A little brick on the top-left corner of the player who's bricked up their goal.
+    drawBrickBadge(ctx, p) {
+      if (p.brick < 2 && Math.floor(p.brick * 8) % 2) return;
+      const bx = p.x - FRAME.half;
+      const by = p.y - FRAME.top;
+      ctx.save();
+      ctx.fillStyle = "#b91c1c";
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(bx - 14, by - 9, 28, 18, 4);
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = "#fecaca";
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(bx - 12, by);
+      ctx.lineTo(bx + 12, by);
+      ctx.moveTo(bx, by - 8);
+      ctx.lineTo(bx, by);
+      ctx.moveTo(bx - 6, by);
+      ctx.lineTo(bx - 6, by + 8);
+      ctx.moveTo(bx + 6, by);
+      ctx.lineTo(bx + 6, by + 8);
+      ctx.stroke();
       ctx.restore();
     }
 

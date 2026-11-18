@@ -210,6 +210,20 @@
     [88, 91, 96, 100].forEach((n, i) => tone(dest, { type: "triangle", freq: midi(n), t: t + 1.0 + i * 0.06, dur: 0.25, gain: 0.08 }));
   }
 
+  // Brick: three heavy bricks thudding into place, then a cheeky slide-whistle up for the other goal growing.
+  function bricks() {
+    if (!ready()) return;
+    const t = ctx.currentTime + 0.02;
+    const dest = out(0, 0.9);
+    for (let i = 0; i < 3; i++) {
+      const at = t + i * 0.16;
+      tone(dest, { type: "triangle", freq: 140 - i * 15, to: 55, t: at, dur: 0.12, gain: 0.35 });
+      const thud = noiseSrc(at, 0.08);
+      thud.connect(filter("lowpass", 900)).connect(env(dest, at, 0.35, 0.002, 0.01, 0.07));
+    }
+    tone(dest, { type: "sine", freq: 380, to: 1500, t: t + 0.55, dur: 0.45, gain: 0.14, vibrato: 8 });
+  }
+
   // Bump: a vocal "oof!" — a falling buzzy "oo" through vowel formants, then a breathy "f".
   function oof(id, pan, seed) {
     if (!ready()) return;
@@ -424,6 +438,7 @@
     starOn,
     starOff: stopStar,
     fanfare,
+    bricks,
     oof,
     crowd,
     count,

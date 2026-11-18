@@ -42,15 +42,16 @@ Settings → **New game** restarts.
 for 10 seconds — they ghost straight through other players and nobody else can touch the ball, so they can dribble
 the length of the pitch uncontested. Now and then a mushroom sprouts too: eat it to grow 2.5× bigger (and heavier)
 for 12 seconds and shove everyone around. Grab a power flower and, for 20 seconds, every goal you score counts double (Settings → Flower: ×2, ×3 or ×5).
+Snatch a 🧱 magic brick and, for 10 seconds, your goal is bricked up to a sliver while the other team's goal gets huge.
 And now and then a 🦃 turkey gets loose: it runs from anyone who comes near and flutters away when cornered — catch it
-and the other team falls into a 😴 food coma for 8 seconds (slow, and they can't kick). Each power (⭐ 🍄 🌸 🦃) has its
+and the other team falls into a 😴 food coma for 8 seconds (slow, and they can't kick). Each power (⭐ 🍄 🌸 🧱 🦃) has its
 own on/off switch under Mayhem in Settings; all are on by default.
 
 Which way? Each goal (net, frame and end line) is painted in the colour of the team **defending** it, and big chevrons in each half point the way that team attacks. Each
 phone also shows a mini pitch: your goal says *Defend*, the other one pulses *Score*.
 
 Sound plays on the Mac: a whoosh on every kick, an "oof!" from each player in a crash, the crowd going wild on
-goals, a growing warble for the mushroom, a hyper theme while the star lasts, a fanfare for the flower, a spoken
+goals, a growing warble for the mushroom, a hyper theme while the star lasts, a fanfare for the flower, thudding bricks for the brick, a spoken
 "10! 9! 8!…" countdown at the end of each half and an air horn when time's up. Browsers keep audio off until you
 click or press a key on the page (the 🔊 button pulses until then); toggle it with that button or <kbd>M</kbd>.
 

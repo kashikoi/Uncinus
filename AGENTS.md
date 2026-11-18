@@ -45,7 +45,12 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
   player. Renderer draws players scaled about their centre. Events `shroom-spawn/get/gone/end`; host→player `big{on}`.
   Mushroom and flower share `ITEMS` + `stepItem` (stationary pick-up, own gap timer, one holder per kind). Flower
   gives `p.flower = FLOWER_POWER`; goals by the holder (not own goals) add `m.flowerPoints` (Settings picker of `FLOWER_CHOICES` 2/3/5, default `FLOWER_POINTS` 2, saved in `uncinus_flower_points`, `M.setFlowerPoints`); `goal` events carry `points`.
-  Each power can be switched off: `m.powers` (keys `M.POWERS` star/shroom/flower/turkey, all on by default), `M.setPower`
+  Brick (`ITEMS.brick`, field `p.brick = BRICK_POWER` 10 s): the holder's team's goal mouth shrinks to
+  `BRICK_SHRINK`× and the other goal grows to `BRICK_GROW`×. Goal mouths are per end in `m.mouth` (eased by `stepMouths`
+  toward `mouthTarget`); posts, net walls, `checkGoal`, the renderer and bots must use `M.mouthAt(m, end)`, never bare
+  `GOAL_HALF`. The renderer fills the closed-off part of a shrunken net with a brick wall. Events `brick-spawn/get/end`;
+  host→player `brick{on,secs}`; sound `S.bricks()`.
+  Each power can be switched off: `m.powers` (keys `M.POWERS` star/shroom/flower/brick/turkey, all on by default), `M.setPower`
   (switching off removes it from the pitch and emits `<kind>-gone`), Settings chips `#powerPicker`, saved as JSON in
   `uncinus_powers`; spawners are gated on `m.powers[kind]`. Turkey (`m.turkey`, `stepTurkey`, own `TURKEY_GAP_MIN..MAX` timer,
   `TURKEY_LIFE` s) flees nearby players and flutter-hops (`turkey-hop`) when one is within `TURKEY_HOP_NEAR`; catching it
@@ -69,7 +74,7 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
   to start if the entry module exports anything but handlers/classes), `bye` before every server close
   (4001/4004/4009/4400). Normal games still put at most `M.MAX_PLAYERS` (12) on the pitch; the host sends `full` to the rest.
 - Protocol: host→player `you{name,team,teamName,color,number,pick,counts,sides}`, `period`, `clock`, `score{left,right}`, `goal{team,scorerId,
-  scorerName,ownGoal,score}`, `star{on,secs}`, `big{on,secs}`, `flower{on,secs,points}`, `turkey{secs}`, `coma{on,secs}`, `full`; `goal` also has `points`; relay→player `welcome`, `host-left`, `host-back`.
+  scorerName,ownGoal,score}`, `star{on,secs}`, `big{on,secs}`, `flower{on,secs,points}`, `brick{on,secs}`, `turkey{secs}`, `coma{on,secs}`, `full`; `goal` also has `points`; relay→player `welcome`, `host-left`, `host-back`.
   Championship: host→player `cup{on:true, phase, size, timer, merge, teams[{id,name,emoji,color,out,into,names}], tie, bracket, score,
   champion, boot, need, missing, players, mine, side, note, moved}` (per phone; never broadcast player ids) and `cup{on:false}`
   (sent on every normal-mode greet, so a phone that last saw a championship goes back to the pad); player→host `cup-pick{team}`,
@@ -116,7 +121,7 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
 - Sound (`js/sound.js`, host only, loaded after render): all effects are synthesised with WebAudio, no audio files;
   the 10…1 countdown uses `speechSynthesis`. `host.playSound` maps match events → sounds: `dash` whoosh, `bump` (new
   match event when two players hit at > `BUMP_SPEED`) → an "oof" per player (per-player pitch, `OOF_GAP` debounce),
-  `goal` crowd, `shroom-get` grow, `star-get/end` star theme loop, `flower-get` fanfare, `turkey-get` gobble, `turkey-hop` flap, `period` second/golden/full
+  `goal` crowd, `shroom-get` grow, `star-get/end` star theme loop, `flower-get` fanfare, `brick-get` brick thuds, `turkey-get` gobble, `turkey-hop` flap, `period` second/golden/full
   air horn. Audio unlocks on the first click/key; the toolbar 🔊 button / `M` toggles it (`uncinus_sound`).
 - `[hidden] { display:none !important }` is required.
 
