@@ -47,6 +47,9 @@ And now and then a 🦃 turkey gets loose: it runs from anyone who comes near an
 and the other team falls into a 😴 food coma for 8 seconds (slow, and they can't kick). Each power (⭐ 🍄 🌸 🧱 🦃) has its
 own on/off switch under Mayhem in Settings; all are on by default.
 
+**Goal replays** (Settings → Rules, on by default): after every goal the big screen replays it zoomed in and
+retro-pixelated, the camera following the ball and the scorer and slowing right down for the finish.
+
 Which way? Each goal (net, frame and end line) is painted in the colour of the team **defending** it, and big chevrons in each half point the way that team attacks. Each
 phone also shows a mini pitch: your goal says *Defend*, the other one pulses *Score*.
 

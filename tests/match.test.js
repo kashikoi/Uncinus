@@ -151,6 +151,17 @@ test("a shot into the right goal scores for left, then kickoff resets", () => {
   assert.ok(p.x < M.CX, "players reset to their own half");
 });
 
+test("a longer goalPause holds the kickoff (room for a replay)", () => {
+  const m = M.createMatch();
+  M.addPlayer(m, "aaaaaa", "Ann");
+  m.goalPause = M.GOAL_PAUSE + 3;
+  shootRight(m, "aaaaaa");
+  run(m, M.GOAL_PAUSE + 1);
+  assert.equal(m.phase, "goal");
+  run(m, 2.5);
+  assert.equal(m.phase, "play");
+});
+
 test("own goals are credited to the other team", () => {
   const m = M.createMatch();
   M.addPlayer(m, "aaaaaa", "Ann"); // left team

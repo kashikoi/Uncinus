@@ -166,6 +166,7 @@
       powers: { star: true, shroom: true, flower: true, brick: true, turkey: true },
       rand: Math.random,
       flowerPoints: FLOWER_POINTS,
+      goalPause: GOAL_PAUSE, // seconds from a goal to the kickoff (the host stretches it to fit a replay)
       turn: 0, // rotates which player's ball contact resolves first
       // Championship matches: the host kicks off ("pre" waits) and moves on after full time ("full" holds).
       manual: false,
@@ -894,7 +895,7 @@
     }
 
     if (m.phase === "play" && playing(m)) checkGoal(m);
-    else if (m.phase === "goal" && m.phaseTime >= GOAL_PAUSE) resetKickoff(m);
+    else if (m.phase === "goal" && m.phaseTime >= (m.goalPause || GOAL_PAUSE)) resetKickoff(m);
     else if (m.period === "pre" && (m.ball.x + BALL_R < PITCH.L || m.ball.x - BALL_R > PITCH.R)) {
       // Warm-up shots don't count; the ball pops back to the centre spot.
       Object.assign(m.ball, { x: CX, y: CY, vx: 0, vy: 0, lastTouch: null });

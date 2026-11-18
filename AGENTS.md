@@ -123,6 +123,13 @@ Checked-in snapshot of working context for Uncinus. If you're an agent picking t
   match event when two players hit at > `BUMP_SPEED`) → an "oof" per player (per-player pitch, `OOF_GAP` debounce),
   `goal` crowd, `shroom-get` grow, `star-get/end` star theme loop, `flower-get` fanfare, `brick-get` brick thuds, `turkey-get` gobble, `turkey-hop` flap, `period` second/golden/full
   air horn. Audio unlocks on the first click/key; the toolbar 🔊 button / `M` toggles it (`uncinus_sound`).
+- **Goal replays** (Settings toggle `uncinus_replays`, default on): the renderer `record`s a snapshot per frame (~4 s
+  ring buffer, `REPLAY.keep`); its goal `onEvent` queues a replay that starts `REPLAY.delay` s later (`onReplay(true)`
+  hides the GOAL! banner). `renderReplay` interpolates snapshots, tracks the ball (leaning toward the scorer), zooms in,
+  goes slow-mo near the goal, draws the scene through `drawScene(…, live=false)` onto a small offscreen canvas and blows
+  it up unsmoothed (pixelated, dissolving in/out), plus scanlines/vignette/REPLAY tag. The host sets `m.goalPause`
+  (match field, default `GOAL_PAUSE`) to `Renderer.REPLAY_TIME + 0.3` so kickoff waits; the clock is stopped anyway.
+  Full-time/cup banners after a golden goal wait `celebration()`. A replay stops if the match leaves the goal phase.
 - `[hidden] { display:none !important }` is required.
 
 ## Testing

@@ -11,6 +11,7 @@
   const TEAM_PICK_KEY = "uncinus_team_pick";
   const MAYHEM_KEY = "uncinus_mayhem";
   const SWAP_KEY = "uncinus_swap_ends"; // teams swap ends at half time (off unless switched on)
+  const REPLAY_KEY = "uncinus_replays"; // show a replay of every goal (on unless switched off)
   const FLOWER_KEY = "uncinus_flower_points"; // what a goal is worth with flower power
   const POWERS_KEY = "uncinus_powers"; // which Mayhem powers are switched on (all, by default)
   const LENGTH_KEY = "uncinus_length";
@@ -384,7 +385,7 @@
         el.periodBanner.hidden = true;
         setTimeout(() => {
           if (state.match.period === "full") show();
-        }, (M.GOAL_PAUSE - 0.2) * 1000);
+        }, (celebration() - 0.2) * 1000);
       }
     } else {
       el.periodBanner.hidden = true;
@@ -466,6 +467,8 @@
     } else if (key === SWAP_KEY) {
       // Takes effect at the next half time; a game already in its 2nd half keeps its ends.
       state.match.swapEnds = on;
+    } else if (key === REPLAY_KEY) {
+      setReplays(on);
     } else {
       M.setMayhem(state.match, on);
       if (!on) el.starToast.hidden = true;
@@ -483,6 +486,7 @@
     state.teamPick = get(TEAM_PICK_KEY);
     M.setMayhem(state.match, get(MAYHEM_KEY));
     state.match.swapEnds = get(SWAP_KEY);
+    setReplays(stored(REPLAY_KEY) !== "0");
     M.setFlowerPoints(state.match, Number(stored(FLOWER_KEY)) || M.FLOWER_POINTS);
     try {
       const saved = JSON.parse(stored(POWERS_KEY) || "{}") || {};
@@ -491,6 +495,17 @@
       // All powers on.
     }
   }
+
+  // Goal replays: the kickoff waits for the replay to finish.
+  function setReplays(on) {
+    state.replays = on;
+    state.renderer.replays = on;
+    if (!on) state.renderer.stopReplay();
+    state.match.goalPause = on ? Math.max(M.GOAL_PAUSE, U.Renderer.REPLAY_TIME + 0.3) : M.GOAL_PAUSE;
+  }
+
+  // Seconds of goal celebration (GOAL! banner, plus the replay when they're on).
+  const celebration = () => state.match.goalPause || M.GOAL_PAUSE;
 
   function togglePower(kind) {
     M.setPower(state.match, kind, !state.match.powers[kind]);
@@ -835,7 +850,7 @@
       el.periodBanner.hidden = true;
       setTimeout(() => {
         if (state.cup && state.cup.phase === "result") show();
-      }, (M.GOAL_PAUSE - 0.2) * 1000);
+      }, (celebration() - 0.2) * 1000);
     }
   }
 
@@ -1177,6 +1192,7 @@
     el.teamPickToggle.checked = state.teamPick;
     el.mayhemToggle.checked = state.match.mayhem;
     el.swapToggle.checked = state.match.swapEnds;
+    el.replayToggle.checked = state.replays;
     updateFlowerPicker();
     updatePowerPicker();
     // In a championship, "New game" replays the tie being played (from its warm-up).
@@ -1283,7 +1299,7 @@
       "pitch", "status", "statusText", "kbBtn", "fsBtn", "settingsBtn", "joinCard", "joinMini", "joinClose", "qr", "miniQr",
       "roomCode", "miniRoom", "joinUrl", "joinLink", "emptyHint", "banner", "bannerText", "bannerBtn", "settings",
       "soundBtn", "soundOn", "soundOff", "themePicker", "relayInput", "relaySave", "relayReset", "relayError", "newRoomBtn", "resetBtn", "version", "appVersion", "settingsClose",
-      "scoreLeft", "scoreRight", "goalBanner", "goalWho", "teamPickToggle", "swapToggle", "mayhemToggle", "flowerPicker", "powerPicker", "starToast", "goalWord", "matchClock", "periodBanner",
+      "scoreLeft", "scoreRight", "goalBanner", "goalWho", "teamPickToggle", "swapToggle", "replayToggle", "mayhemToggle", "flowerPicker", "powerPicker", "starToast", "goalWord", "matchClock", "periodBanner",
       "periodWord", "periodSub", "periodCount", "lengthPicker",
       "cupToggle", "cupSettings", "cupLocked", "cupSizePicker", "cupLengthPicker", "cupThemePicker", "cupMergeToggle", "cupRestartBtn",
       "cupNameLeft", "cupNameRight", "cupLobby", "cupQr", "cupRoom", "cupUrl", "cupTeams", "cupWaiting", "cupStart",
@@ -1324,6 +1340,7 @@
     el.teamPickToggle.addEventListener("change", () => setRule(TEAM_PICK_KEY, el.teamPickToggle.checked));
     el.mayhemToggle.addEventListener("change", () => setRule(MAYHEM_KEY, el.mayhemToggle.checked));
     el.swapToggle.addEventListener("change", () => setRule(SWAP_KEY, el.swapToggle.checked));
+    el.replayToggle.addEventListener("change", () => setRule(REPLAY_KEY, el.replayToggle.checked));
     el.powerPicker.addEventListener("click", (ev) => {
       const chip = ev.target.closest("[data-power]");
       if (chip) togglePower(chip.dataset.power);
@@ -1414,6 +1431,11 @@
     bind();
     state.renderer = new U.Renderer(el.pitch);
     state.renderer.faces = state.faces;
+    state.renderer.onReplay = (on) => {
+      if (!on) return;
+      el.goalBanner.hidden = true; // the replay takes over from the GOAL! banner
+      S.whoosh(0);
+    };
     loadRules();
     loadCupSettings();
     loadBotSettings();

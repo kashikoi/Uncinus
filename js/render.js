@@ -24,6 +24,14 @@
   // The frame of a face player: the same outline as a block's "Kick ready" ring (block + 9 px lift + 4 px margin).
   const FRAME = { half: HALF + 4, top: HALF + 4, bottom: HALF + 13 };
   const APRON = 30;
+  // Goal replays (seconds). The clip runs from `before` the goal to `after` it, at full speed until `slowBefore`
+  // the goal and then at `slowmo` speed; it starts `delay` after the goal and dissolves out over `outro`.
+  const REPLAY = {
+    keep: 4, delay: 1.3, before: 2.0, after: 0.5, slowBefore: 0.7, slowmo: 0.45, intro: 0.35, outro: 0.35,
+    zoom: [1.9, 2.6], pixels: [24, 320], // pixels: replay width in pixels, dissolving from the first to the second
+  };
+  // From the goal to the end of the replay: the host holds the kickoff this long.
+  REPLAY.time = REPLAY.delay + (REPLAY.before - REPLAY.slowBefore) + (REPLAY.slowBefore + REPLAY.after) / REPLAY.slowmo + REPLAY.outro;
 
   const PALETTES = {
     day: {
@@ -95,6 +103,11 @@
       this.rand = rng(5);
       this.faces = null;
       this.maxDpr = 2;
+      this.history = []; // recent snapshots for goal replays
+      this.replays = true;
+      this.replay = null;
+      this.replayQueue = null;
+      this.onReplay = null;
       this.resize();
     }
 
@@ -174,6 +187,7 @@
           });
         }
       } else if (ev.type === "goal") {
+        this.queueReplay(ev, m);
         const color = TEAMS[ev.team].color;
         const gx = M.defends(m, ev.team) === "left" ? PITCH.R + GOAL_DEPTH / 2 : PITCH.L - GOAL_DEPTH / 2;
         for (let i = 0; i < 90; i++) {
@@ -213,16 +227,24 @@
     }
 
     render(m, dt) {
+      if (this.replay) {
+        if (this.renderReplay(m, dt)) return;
+      } else if (this.replayQueue && m.t >= this.replayQueue.at) {
+        if (this.startReplay(m) && this.renderReplay(m, dt)) return;
+      }
+      if (this.replayQueue && m.phase !== "goal") this.replayQueue = null;
+      this.record(m);
       this.t = m.t;
       const ctx = this.ctx;
-      const pal = PALETTES[this.theme];
       const { dpr, scale, ox, oy, w, h } = this.view;
       ctx.setTransform(dpr * scale, 0, 0, dpr * scale, dpr * ox, dpr * oy);
-      const vx0 = -ox / scale - 2;
-      const vx1 = (w - ox) / scale + 2;
-      const vy0 = -oy / scale - 2;
-      const vy1 = (h - oy) / scale + 2;
+      const bounds = { x0: -ox / scale - 2, x1: (w - ox) / scale + 2, y0: -oy / scale - 2, y1: (h - oy) / scale + 2 };
+      this.drawScene(ctx, PALETTES[this.theme], m, dt, bounds, true);
+    }
 
+    // Everything on the pitch, in logical coordinates. `live` = the real match (a replay skips trails and effects).
+    drawScene(ctx, pal, m, dt, bounds, live) {
+      const { x0: vx0, x1: vx1, y0: vy0, y1: vy1 } = bounds;
       const sky = ctx.createLinearGradient(0, vy0, 0, vy1);
       sky.addColorStop(0, pal.skyTop);
       sky.addColorStop(0.6, pal.skyMid);
@@ -240,8 +262,10 @@
         ctx.globalAlpha = 1;
       }
       for (const a of this.scenery.ambient) {
-        a.x += a.v * dt;
-        if (a.x > W + 200) a.x = -200;
+        if (live) {
+          a.x += a.v * dt;
+          if (a.x > W + 200) a.x = -200;
+        }
         this.drawPuffCloud(ctx, a, pal);
       }
 
@@ -250,7 +274,7 @@
       this.drawNets(ctx, pal, "back", m);
 
       const players = [...m.players.values()].sort((a, b) => a.y - b.y);
-      this.updateTrails(players, dt);
+      if (live) this.updateTrails(players, dt);
       for (const p of players) {
         const s = p.scale || 1;
         // Face players are see-through inside their frame, so their shadow sits just below it.
@@ -261,7 +285,7 @@
       if (m.flower) this.drawFlower(ctx, pal, m.flower);
       if (m.brick) this.drawBrick(ctx, pal, m.brick);
       this.drawShadow(ctx, pal, m.ball.x + 5, m.ball.y + BALL_R * 0.8, BALL_R * 1.05, 5, 1);
-      this.drawTrails(ctx, players);
+      if (live) this.drawTrails(ctx, players);
       for (const p of players) {
         // Mushroom-sized players are drawn scaled about their centre.
         const s = p.scale || 1;
@@ -281,9 +305,209 @@
       if (m.star) this.drawStar(ctx, m.star);
       this.drawBall(ctx, m.ball);
       this.drawNets(ctx, pal, "front", m);
-      this.drawFx(ctx, dt);
+      if (live) this.drawFx(ctx, dt);
       if (pal.flood > 0) this.drawFloodlights(ctx, pal);
       for (const p of players) this.drawTag(ctx, pal, p);
+    }
+
+    // ---------- Goal replays ----------
+    // A rolling few seconds of the match, so a goal can be shown again: zoomed in, pixelated like an old
+    // broadcast, the camera tracking the ball and the scorer, slowing right down for the finish.
+    record(m) {
+      const buf = this.history;
+      const lastSnap = buf[buf.length - 1];
+      if (lastSnap && m.t < lastSnap.t) buf.length = 0; // a fresh match
+      else if (lastSnap && m.t - lastSnap.t < 1 / 90) return;
+      const copy = (o) => (o ? Object.assign({}, o) : null);
+      const players = [];
+      for (const p of m.players.values()) players.push(Object.assign({}, p));
+      buf.push({
+        t: m.t, players, ball: copy(m.ball), mouth: copy(m.mouth), swapped: m.swapped, flowerPoints: m.flowerPoints,
+        star: copy(m.star), shroom: copy(m.shroom), flower: copy(m.flower), brick: copy(m.brick), turkey: copy(m.turkey),
+      });
+      while (buf.length && buf[0].t < m.t - REPLAY.keep) buf.shift();
+    }
+
+    // Called on every goal; the replay starts once the GOAL! banner has had its moment.
+    queueReplay(ev, m) {
+      if (!this.replays) return;
+      this.replayQueue = { goalT: m.t, at: m.t + REPLAY.delay, team: ev.team, scorerId: ev.scorerId, scorerName: ev.scorerName, ownGoal: ev.ownGoal };
+    }
+
+    startReplay(m) {
+      const q = this.replayQueue;
+      this.replayQueue = null;
+      if (m.phase !== "goal") return false;
+      const clip = this.history.filter((s) => s.t >= q.goalT - REPLAY.before && s.t <= q.goalT + REPLAY.after);
+      if (clip.length < 4) return false;
+      this.replay = Object.assign({}, q, { clip, start: clip[0].t, c: clip[0].t, end: clip[clip.length - 1].t, i: 0, age: 0, hold: 0, cam: null });
+      if (this.onReplay) this.onReplay(true, this.replay);
+      return true;
+    }
+
+    stopReplay() {
+      if (!this.replay) return;
+      this.replay = null;
+      this.history.length = 0;
+      this.fx = this.fx.filter((f) => f.kind === "emoji"); // the goal confetti has had its moment
+      if (this.onReplay) this.onReplay(false);
+    }
+
+    // The match as it was at clip time c, with positions blended between the two nearest snapshots.
+    snapshotAt(r, c) {
+      const clip = r.clip;
+      while (r.i < clip.length - 2 && clip[r.i + 1].t <= c) r.i++;
+      const a = clip[r.i];
+      const b = clip[Math.min(r.i + 1, clip.length - 1)];
+      const u = b.t > a.t ? Math.min(1, Math.max(0, (c - a.t) / (b.t - a.t))) : 0;
+      const lerp = (x, y) => x + (y - x) * u;
+      const later = new Map(b.players.map((p) => [p.id, p]));
+      const players = new Map();
+      for (const p of a.players) {
+        const q = later.get(p.id) || p;
+        players.set(p.id, Object.assign({}, p, { x: lerp(p.x, q.x), y: lerp(p.y, q.y), scale: lerp(p.scale || 1, q.scale || 1) }));
+      }
+      const ball = Object.assign({}, a.ball, { x: lerp(a.ball.x, b.ball.x), y: lerp(a.ball.y, b.ball.y), spin: lerp(a.ball.spin, b.ball.spin) });
+      const mouth = { left: lerp(a.mouth.left, b.mouth.left), right: lerp(a.mouth.right, b.mouth.right) };
+      return Object.assign({}, a, { t: c, players, ball, mouth });
+    }
+
+    // Draws one replay frame; returns false once the replay is over (the caller then draws the live match).
+    renderReplay(m, dt) {
+      const r = this.replay;
+      if (m.phase !== "goal") {
+        this.stopReplay();
+        return false;
+      }
+      r.age += dt;
+      const slow = r.c >= r.goalT - REPLAY.slowBefore;
+      r.c = Math.min(r.end, r.c + dt * (slow ? REPLAY.slowmo : 1));
+      if (r.c >= r.end) r.hold += dt;
+      if (r.hold >= REPLAY.outro) {
+        this.stopReplay();
+        return false;
+      }
+      const snap = this.snapshotAt(r, r.c);
+      this.t = r.c;
+
+      // Camera: on the ball, leaning toward the scorer while they're close, zooming in as the goal nears.
+      const ball = snap.ball;
+      const hero = r.scorerId ? snap.players.get(r.scorerId) : null;
+      let fx = ball.x;
+      let fy = ball.y;
+      if (hero && Math.hypot(hero.x - ball.x, hero.y - ball.y) < 450) {
+        fx = ball.x * 0.62 + hero.x * 0.38;
+        fy = ball.y * 0.62 + hero.y * 0.38;
+      }
+      const prog = Math.min(1, Math.max(0, (r.c - r.start) / Math.max(0.1, r.goalT - r.start)));
+      const zoom = REPLAY.zoom[0] + (REPLAY.zoom[1] - REPLAY.zoom[0]) * prog;
+      if (!r.cam) r.cam = { x: fx, y: fy, z: zoom };
+      const k = 1 - Math.exp(-5 * dt);
+      r.cam.x += (fx - r.cam.x) * k;
+      r.cam.y += (fy - r.cam.y) * k;
+      r.cam.z += (zoom - r.cam.z) * k;
+      const { w, h, scale, dpr } = this.view;
+      const vw = w / scale / r.cam.z;
+      const vh = h / scale / r.cam.z;
+      const fit = (v, lo, hi, span) => (hi - lo <= span ? (lo + hi) / 2 : Math.min(hi - span / 2, Math.max(lo + span / 2, v)));
+      const cx = fit(r.cam.x, PITCH.L - GOAL_DEPTH - 45, PITCH.R + GOAL_DEPTH + 45, vw);
+      const cy = fit(r.cam.y, PITCH.T - 110, PITCH.B + 90, vh);
+
+      // Pixelated: draw small, then blow it up without smoothing. It dissolves in and out through big blocks.
+      const fade = Math.min(1, r.age / REPLAY.intro, 1 - r.hold / REPLAY.outro);
+      const ease = fade * fade * (3 - 2 * fade);
+      const pw = Math.max(8, Math.round(REPLAY.pixels[0] + (REPLAY.pixels[1] - REPLAY.pixels[0]) * ease));
+      const ph = Math.max(5, Math.round((pw * h) / w));
+      const off = this.replayCanvas || (this.replayCanvas = root.document.createElement("canvas"));
+      if (off.width !== pw || off.height !== ph) {
+        off.width = pw;
+        off.height = ph;
+      }
+      const octx = off.getContext("2d");
+      const s = pw / vw;
+      octx.setTransform(s, 0, 0, s, pw / 2 - cx * s, ph / 2 - cy * s);
+      const pal = PALETTES[this.theme];
+      this.drawScene(octx, pal, snap, 0, { x0: cx - vw / 2 - 2, x1: cx + vw / 2 + 2, y0: cy - vh / 2 - 2, y1: cy + vh / 2 + 2 }, false);
+      if (hero) {
+        // A pulsing ring picks out the scorer.
+        const team = TEAMS[hero.team];
+        const rad = HALF * (hero.scale || 1) * (1.7 + Math.sin(r.age * 8) * 0.15);
+        octx.strokeStyle = team.color;
+        octx.lineWidth = 5;
+        octx.beginPath();
+        octx.arc(hero.x, hero.y + 4, rad, 0, Math.PI * 2);
+        octx.stroke();
+        octx.strokeStyle = "#ffffff";
+        octx.lineWidth = 2;
+        octx.stroke();
+      }
+
+      const ctx = this.ctx;
+      const cw = this.canvas.width;
+      const chh = this.canvas.height;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(off, 0, 0, cw, chh);
+      ctx.imageSmoothingEnabled = true;
+      this.drawReplayOverlay(ctx, r, cw, chh, dpr, slow && r.c < r.end);
+      return true;
+    }
+
+    // Broadcast dressing over the replay: scanlines, a vignette, a team-colour frame and a blinking REPLAY tag.
+    drawReplayOverlay(ctx, r, cw, ch, dpr, slow) {
+      if (!this.scanlines) {
+        const tile = root.document.createElement("canvas");
+        tile.width = 1;
+        tile.height = 4;
+        const t = tile.getContext("2d");
+        t.fillStyle = "rgba(0, 0, 0, 0.22)";
+        t.fillRect(0, 0, 1, 2);
+        this.scanlines = ctx.createPattern(tile, "repeat");
+      }
+      ctx.fillStyle = this.scanlines;
+      ctx.fillRect(0, 0, cw, ch);
+      const v = ctx.createRadialGradient(cw / 2, ch / 2, Math.min(cw, ch) * 0.35, cw / 2, ch / 2, Math.hypot(cw, ch) * 0.6);
+      v.addColorStop(0, "rgba(0, 0, 0, 0)");
+      v.addColorStop(1, "rgba(0, 0, 0, 0.55)");
+      ctx.fillStyle = v;
+      ctx.fillRect(0, 0, cw, ch);
+      const color = TEAMS[r.team] ? TEAMS[r.team].color : "#ffffff";
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 10 * dpr;
+      ctx.strokeRect(5 * dpr, 5 * dpr, cw - 10 * dpr, ch - 10 * dpr);
+
+      const u = dpr * Math.min(1.6, Math.max(0.8, cw / dpr / 1280));
+      const x = cw / 2;
+      const y = ch - 92 * u;
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.font = `900 ${Math.round(40 * u)}px ui-monospace, Menlo, Consolas, monospace`;
+      const label = slow ? "REPLAY · SLOW-MO" : "REPLAY";
+      const tw = ctx.measureText(label).width;
+      ctx.fillStyle = "rgba(10, 14, 28, 0.78)";
+      ctx.beginPath();
+      ctx.roundRect(x - tw / 2 - 52 * u, y - 32 * u, tw + 82 * u, 64 * u, 12 * u);
+      ctx.fill();
+      if (Math.floor(r.age * 2.5) % 2 === 0) {
+        ctx.fillStyle = "#ef4444";
+        ctx.beginPath();
+        ctx.arc(x - tw / 2 - 26 * u, y, 10 * u, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(label, x + 8 * u, y + 2 * u);
+      if (r.scorerName) {
+        ctx.font = `800 ${Math.round(24 * u)}px ui-monospace, Menlo, Consolas, monospace`;
+        ctx.fillStyle = color;
+        ctx.strokeStyle = "rgba(10, 14, 28, 0.9)";
+        ctx.lineWidth = 6 * u;
+        ctx.lineJoin = "round";
+        const who = `${r.ownGoal ? "Own goal" : "⚽"} ${r.scorerName}`;
+        ctx.strokeText(who, x, y + 54 * u);
+        ctx.fillText(who, x, y + 54 * u);
+      }
+      ctx.restore();
     }
 
     drawPuffCloud(ctx, a, pal) {
@@ -1096,6 +1320,7 @@
     }
   }
 
+  Renderer.REPLAY_TIME = REPLAY.time;
   U.Renderer = Renderer;
   U.PALETTES = PALETTES;
 })(typeof window !== "undefined" ? window : globalThis);
