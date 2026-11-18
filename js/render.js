@@ -28,7 +28,7 @@
   // the goal and then at `slowmo` speed; it starts `delay` after the goal and dissolves out over `outro`.
   const REPLAY = {
     keep: 4, delay: 1.3, before: 2.0, after: 0.5, slowBefore: 0.7, slowmo: 0.45, intro: 0.35, outro: 0.35,
-    zoom: [1.9, 2.6], pixels: [24, 320], // pixels: replay width in pixels, dissolving from the first to the second
+    zoom: [1.9, 2.6], pixels: [24, 480], // pixels: replay width in pixels, dissolving from the first to the second
   };
   // From the goal to the end of the replay: the host holds the kickoff this long.
   REPLAY.time = REPLAY.delay + (REPLAY.before - REPLAY.slowBefore) + (REPLAY.slowBefore + REPLAY.after) / REPLAY.slowmo + REPLAY.outro;
