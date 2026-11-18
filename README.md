@@ -158,3 +158,7 @@ node --test tests/*.test.js     # match physics, championship, bots, QR encoder,
 - Match timer and "first to 5" mode
 - Power-ups that drift down on little clouds (giant ball, speed boots)
 - Goalkeeper role for the last player in your half
+
+## License
+
+[MIT](LICENSE) — free to clone, fork and mod.
